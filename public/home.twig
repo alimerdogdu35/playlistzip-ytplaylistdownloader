@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlaylistZip | En Hızlı YouTube Playlist MP3 İndirici (320kbps)</title>
+    <meta name="description" content="Ücretsiz online YouTube Playlist Downloader. Tüm playlisti tek tıkla yüksek kaliteli MP3 (320kbps) olarak ZIP formatında indirin. Sınır yok, hız var!">
+    <meta name="keywords" content="youtube playlist downloader, youtube mp3 converter, toplu mp3 indir, youtube albüm indir, high quality mp3 download, Playlistzip">
+    
+    <meta property="og:title" content="PlaylistZip - Hızlı YouTube Playlist Downloader">
+    <meta property="og:description" content="Tüm playlisti saniyeler içinde MP3 paketine dönüştür.">
+    <meta property="og:type" content="website">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at top right, #1e293b, #0f172a); }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .gradient-text { background: linear-gradient(90deg, #60a5fa, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .pulse-red { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.4s ease forwards;
+}
+
+/* Özel Scrollbar */
+#videoList::-webkit-scrollbar {
+    width: 4px;
+}
+#videoList::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 10px;
+}
+/* Gelişmiş Kaydırma Animasyonu */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+section {
+    animation: fadeInUp 0.8s ease-out forwards;
+}
+    </style>
+</head>
+<body class="text-white min-h-screen flex items-center justify-center p-6">
+
+    <div class="max-w-3xl w-full">
+       <header class="text-center mb-16 animate-fade-in">
+    <div class="inline-block px-4 py-1.5 mb-6 text-xs font-semibold tracking-widest uppercase bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30">
+        🚀 Işık Hızında Dönüştürücü
+    </div>
+    <h1 class="text-6xl font-extrabold mb-6 tracking-tighter">Playlist<span class="gradient-text">Zip</span></h1>
+    <p class="text-gray-400 font-light text-xl max-w-2xl mx-auto leading-relaxed">
+        YouTube playlistlerini <span class="text-white font-semibold">saniyeler içinde</span> yüksek kaliteli MP3 albümlerine dönüştürün. Beklemek yok, karmaşa yok.
+    </p>
+</header>
+
+        <div class="glass rounded-3xl p-8 shadow-2xl">
+            <div class="relative group">
+                <input id="playlistUrl" type="text" 
+                       placeholder="YouTube Playlist URL'sini buraya bırakın..." 
+                       class="w-full bg-white/5 border border-white/10 p-5 rounded-2xl outline-none focus:border-blue-500 transition-all text-lg placeholder:text-gray-500">
+                <div class="absolute inset-y-0 right-3 flex items-center">
+                    <button id="downloadBtn" onclick="processPlaylist()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-8 rounded-xl transition-all shadow-lg active:scale-95">
+                      Hazırla
+                    </button>
+                </div>
+            </div>
+
+            <div id="statusArea" class="mt-10 hidden border-t border-white/10 pt-8">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                            <svg class="w-5 h-5 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </div>
+                        <div>
+                            <h3 id="statusTitle" class="font-semibold text-gray-200">Videolar Analiz Ediliyor...</h3>
+                            <p id="statusSub" class="text-xs text-gray-500 uppercase tracking-widest">Lütfen pencereyi kapatmayın</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                    <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-full w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+      <div id="videoContainer" class="mt-8 hidden">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-blue-400">Playlist İçeriği</h3>
+        <button id="finalDownloadBtn" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all shadow-lg pulse-red">
+            Tümünü MP3 Olarak İndir (.zip)
+        </button>
+    </div>
+    <div id="videoList" class="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+        </div>
+</div>
+<div id="successCard" class="mt-8 hidden animate-fade-in">
+    <div class="glass border-green-500/30 bg-green-500/10 p-6 rounded-2xl flex flex-col items-center text-center">
+        <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(34,197,94,0.5)]">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-2">İşlem Tamamlandı!</h3>
+        <p class="text-gray-300 text-sm mb-4">Playlist başarıyla MP3'e dönüştürüldü ve indirme başlatıldı.</p>
+        <button onclick="location.reload()" class="text-xs text-green-400 hover:text-green-300 underline underline-offset-4 transition-all">
+            Yeni bir playlist indir
+        </button>
+    </div>
+</div>
+        </div>
+        <!-- Özellikler Bölümü -->
+        <section class="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+    <div class="glass p-8 rounded-3xl border-white/5 hover:border-blue-500/30 transition-all group">
+        <div class="w-12 h-12 bg-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <span class="text-2xl">🔗</span>
+        </div>
+        <h4 class="font-bold text-lg mb-3 text-white">Linki Yapıştır</h4>
+        <p class="text-gray-500 text-sm">Playlist URL'sini kutucuğa bırakın ve analiz edilmesini bekleyin.</p>
+    </div>
+    <div class="glass p-8 rounded-3xl border-white/5 hover:border-blue-500/30 transition-all group">
+        <div class="w-12 h-12 bg-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <span class="text-2xl">⚡</span>
+        </div>
+        <h4 class="font-bold text-lg mb-3 text-white">Hızla Hazırla</h4>
+        <p class="text-gray-500 text-sm">Paralel motorumuz tüm videoları aynı anda işleyerek saniyeler içinde paketler.</p>
+    </div>
+    <div class="glass p-8 rounded-3xl border-white/5 hover:border-blue-500/30 transition-all group">
+        <div class="w-12 h-12 bg-green-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <span class="text-2xl">📦</span>
+        </div>
+        <h4 class="font-bold text-lg mb-3 text-white">ZIP Olarak İndir</h4>
+        <p class="text-gray-500 text-sm">Tüm şarkılar tek bir paket içinde, hazır ve metadata'sı düzenlenmiş olarak iner.</p>
+    </div>
+</section>
+
+<!-- Neden Biz? -->
+<section class="mt-32">
+    <div class="flex flex-col md:flex-row items-center gap-16">
+        <div class="flex-1">
+            <h2 class="text-4xl font-bold mb-6">Neden <span class="text-blue-500">PlaylistZip</span>?</h2>
+            <ul class="space-y-4 text-gray-400">
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500">✔</span>
+                    <div><b class="text-white">Sınırları Zorlayın:</b> 50 video limitini aşan dev playlistleri destekliyoruz.</div>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500">✔</span>
+                    <div><b class="text-white">Paralel Motor:</b> Videoları sırayla değil, 5'erli gruplar halinde indiriyoruz.</div>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="text-green-500">✔</span>
+                    <div><b class="text-white">Saf Kalite:</b> Orijinal YouTube ses kalitesini 320kbps formatında koruyoruz.</div>
+                </li>
+            </ul>
+        </div>
+        <div class="flex-1 glass p-10 rounded-full aspect-square flex items-center justify-center border-blue-500/20 shadow-[0_0_50px_rgba(59,130,246,0.1)]">
+            <div class="text-center">
+                <div class="text-7xl font-black gradient-text">3x</div>
+                <div class="text-gray-500 font-bold tracking-widest uppercase">Daha Hızlı</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!--FAQ-->
+<section class="mt-32 max-w-4xl mx-auto px-4">
+    <h3 class="text-3xl font-bold text-center mb-12">Sıkça Sorulan Sorular (SSS)</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="glass p-6 rounded-2xl hover:bg-white/5 transition-all">
+            <h5 class="font-bold mb-2 text-blue-400">PlaylistZip ile kaç video indirebilirim?</h5>
+            <p class="text-gray-400 text-sm leading-relaxed">Sınır tanımıyoruz! 50, 100 veya 500+ videoluk devasa playlistleri paralel indirme motorumuz sayesinde tek bir ZIP paketi olarak indirebilirsiniz.</p>
+        </div>
+        <div class="glass p-6 rounded-2xl hover:bg-white/5 transition-all">
+            <h5 class="font-bold mb-2 text-blue-400">Ses kalitesi nasıldır?</h5>
+            <p class="text-gray-400 text-sm leading-relaxed">Tüm dönüştürme işlemleri en yüksek kalitede (320kbps bitrate) gerçekleştirilir. Orijinal stüdyo kalitesini korumak için ileri düzey FFmpeg kodlayıcıları kullanıyoruz.</p>
+        </div>
+        <div class="glass p-6 rounded-2xl hover:bg-white/5 transition-all">
+            <h5 class="font-bold mb-2 text-blue-400">Mobil cihazlarda çalışır mı?</h5>
+            <p class="text-gray-400 text-sm leading-relaxed">Evet, PlaylistZip tamamen duyarlıdır (responsive). iPhone, Android veya tabletinizden playlist linkini yapıştırıp MP3 albümünüzü oluşturabilirsiniz.</p>
+        </div>
+        <div class="glass p-6 rounded-2xl hover:bg-white/5 transition-all">
+            <h5 class="font-bold mb-2 text-blue-400">YouTube kanalını komple indirebilir miyim?</h5>
+            <p class="text-gray-400 text-sm leading-relaxed">Şu an için "Playlist" linklerini destekliyoruz. Kanal sahibinin oluşturduğu tüm listeleri URL'yi kopyalayarak saniyeler içinde indirebilirsiniz.</p>
+        </div>
+        <div class="glass p-6 rounded-2xl hover:bg-white/5 transition-all">
+            <h5 class="font-bold mb-2 text-blue-400">İndirme işlemi neden bazen bekletiyor?</h5>
+            <p class="text-gray-400 text-sm leading-relaxed">Çok büyük playlistlerde (100+ video) sunucumuzun videoları paketlemesi biraz zaman alabilir. Ancak paralel motorumuz sayesinde bu süre standart sitelerden 3 kat daha hızlıdır.</p>
+        </div>
+        <div class="glass p-6 rounded-2xl hover:bg-white/5 transition-all">
+            <h5 class="font-bold mb-2 text-blue-400">Ücret ödemem gerekiyor mu?</h5>
+            <p class="text-gray-400 text-sm leading-relaxed">Temel özelliklerimiz tamamen ücretsizdir. Daha hızlı indirme ve ekstra özellikler sunan Premium paketlerimiz için fiyat listemize göz atabilirsiniz.</p>
+        </div>
+    </div>
+</section>
+
+<section class="mt-40 border-t border-white/5 pt-16 pb-8">
+    <div class="max-w-4xl mx-auto px-6 opacity-40 hover:opacity-100 transition-opacity duration-500">
+        <h2 class="text-sm font-bold uppercase tracking-widest mb-6 text-blue-500">PlaylistZip: Profesyonel YouTube Playlist İndirme Servisi</h2>
+        <div class="text-xs leading-relaxed text-gray-400 space-y-4 text-justify">
+            <p>
+                <strong>YouTube Playlist Downloader</strong> aracı olan PlaylistZip, kullanıcıların favori müzik listelerini toplu olarak indirmesini sağlayan en hızlı <strong>YouTube to MP3</strong> dönüştürücüsüdür. Gelişmiş paralel indirme motorumuz sayesinde, tek bir <strong>YouTube playlist URL</strong>'si kullanarak tüm albümü saniyeler içinde <strong>320kbps yüksek kalite</strong> MP3 formatında cihazınıza kaydedebilirsiniz.
+            </p>
+            <p>
+                Çoğu servis 50 video sınırı koyarken, PlaylistZip ile <strong>sınırsız playlist indirme</strong> deneyimi yaşarsınız. 100, 200 veya daha fazla videodan oluşan devasa listeleri tek bir <strong>ZIP paketi</strong> halinde sunuyoruz. <em>YouTube toplu müzik indirme</em> işlemlerinizde FFmpeg teknolojisi kullanarak ses kaybını minimize ediyor ve orijinal stüdyo kalitesini koruyoruz.
+            </p>
+            <p>
+                İster Windows, ister Mac, isterseniz mobil cihazlarınızdan <strong>online YouTube MP3 dönüştürücü</strong> hizmetimizden ücretsiz yararlanabilirsiniz. PlaylistZip, kullanıcı gizliliğine önem verir; indirdiğiniz içerikler sunucularımızda saklanmaz ve işlem bittiği an kalıcı olarak silinir. <strong>En hızlı YouTube playlist indirici</strong> arayışınızda PlaylistZip, Mersin ve İzmir merkezli yerli yazılım gücüyle yanınızda.
+            </p>
+        </div>
+    </div>
+</section>
+
+       <footer class="mt-40 pt-10 border-t border-white/5 text-center">
+    <div class="flex justify-center gap-8 mb-8 text-gray-500">
+        <a href="#" class="hover:text-white transition-colors">Ana Sayfa</a>
+        <a href="#" class="hover:text-white transition-colors">Kullanım Şartları</a>
+        <a href="#" class="hover:text-white transition-colors">İletişim</a>
+    </div>
+    <p class="text-gray-600 text-xs">
+        &copy; 2026 PlaylistZip AI. ACE Labs tarafından geliştirilmiştir. <br>
+        Tüm hakları saklıdır.
+    </p>
+</footer>
+    </div>
+<script>
+    // Global değişken olarak tanımlayalım ki her yerden erişilebilsin
+    async function processPlaylist() {
+    console.log("Hazırla butonuna basıldı...");
+    const urlInput = document.getElementById('playlistUrl').value;
+    
+    // URL Kontrolü
+    if (!urlInput.includes('list=')) {
+        alert('Lütfen geçerli bir YouTube Playlist URL\'si girin!');
+        return;
+    }
+
+    const urlParams = new URLSearchParams(new URL(urlInput).search);
+    const playlistId = urlParams.get('list');
+
+    // UI Elementleri
+    const videoContainer = document.getElementById('videoContainer');
+    const videoList = document.getElementById('videoList');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusArea = document.getElementById('statusArea');
+    const finalDownloadBtn = document.getElementById('finalDownloadBtn');
+    const successCard = document.getElementById('successCard');
+
+    // UI Reset
+    statusArea.classList.remove('hidden');
+    statusTitle.innerText = "Playlist Analiz Ediliyor (Bu işlem büyük listelerde sürebilir)...";
+    videoContainer.classList.add('hidden');
+    successCard.classList.add('hidden');
+
+    try {
+        // 1. Videoları Backend'den Çek
+        const response = await fetch(`/api/get-playlist-info?id=${playlistId}`);
+        
+        if (!response.ok) throw new Error("Sunucu hatası: " + response.status);
+        
+        const data = await response.json(); // Data burada tanımlanıyor
+
+        if (!data || !data.videos || data.videos.length === 0) {
+            throw new Error("Playlist boş veya gizli.");
+        }
+
+        // 2. Videoları Listele
+        videoList.innerHTML = data.videos.map((v, index) => `
+            <div class="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 hover:bg-white/10 transition-all group animate-fade-in" style="animation-delay: ${index * 30}ms">
+                <div class="relative w-24 h-16 flex-shrink-0 overflow-hidden rounded-lg shadow-lg">
+                    <img src="${v.thumbnail}" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                </div>
+                <div class="flex-1 min-w-0 text-left">
+                    <p class="text-sm font-semibold text-gray-100 truncate mb-1">${v.title}</p>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">MP3 Audio - 320kbps</p>
+                </div>
+            </div>
+        `).join('');
+
+        // 3. Arayüzü Güncelle
+        videoContainer.classList.remove('hidden');
+        statusTitle.innerText = `${data.videos.length} Video Listelendi.`;
+        
+        // 4. İndirme Butonuna Olayı Bağla
+        finalDownloadBtn.onclick = function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-pulse">Hazırlanıyor...</span>`;
+            statusTitle.innerText = "Sunucu paralel paketleme yapıyor, lütfen bekleyin...";
+
+            // İndirmeyi başlat
+            window.location.href = `/api/download-playlist-zip?id=${playlistId}`;
+
+            // Başarı ekranına geçiş (Playlist uzunsa süreyi artırıyoruz)
+            const waitTime = data.videos.length > 50 ? 10000 : 5000;
+            
+            setTimeout(() => {
+                videoContainer.classList.add('hidden');
+                statusArea.classList.add('hidden');
+                successCard.classList.remove('hidden');
+                
+                try {
+                    if (typeof confetti === 'function') {
+                        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                    }
+                } catch (e) { console.error("Konfeti hatası"); }
+
+                btn.disabled = false;
+                btn.innerHTML = "Tümünü MP3 Olarak İndir (.zip)";
+            }, waitTime);
+        };
+
+    } catch (err) {
+        console.error("Hata Detayı:", err);
+        alert("Hata: " + err.message);
+        statusArea.classList.add('hidden');
+    }
+}
+</script>
+</body>
+</html>
