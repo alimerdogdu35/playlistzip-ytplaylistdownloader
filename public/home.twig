@@ -117,6 +117,9 @@ section {
     </div>
 </div>
         </div>
+
+       
+
         <!-- Özellikler Bölümü -->
         <section class="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
     <div class="glass p-8 rounded-3xl border-white/5 hover:border-blue-500/30 transition-all group">
@@ -142,6 +145,59 @@ section {
     </div>
 </section>
 
+<hr class="mt-32 mb-12 animate-fade-in">
+
+ <section id="pricing" class="mt-32 px-4">
+    <div class="text-center mb-16">
+        <h2 class="text-4xl font-bold mb-4">Size Uygun Planı Seçin</h2>
+        <p class="text-gray-500 italic">Kayıt yok, abonelik yok. Sadece ihtiyacınız olduğunda ödeyin!</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div class="glass p-8 rounded-3xl border-white/5 flex flex-col justify-between">
+            <div>
+                <h4 class="text-lg font-bold mb-2">Günlük Pas</h4>
+                <div class="text-3xl font-black mb-6">49 TL <span class="text-sm font-normal text-gray-500">/24 Saat</span></div>
+                <ul class="space-y-3 mb-8 text-gray-400 text-xs">
+                    <li>✔ Sınırsız Playlist İndirme</li>
+                    <li>✔ 320kbps Ses Kalitesi</li>
+                    <li>✔ 24 Saatlik Lisans Anahtarı</li>
+                    <li>✔ E-posta Desteği</li>
+                </ul>
+            </div>
+            <button onclick="buyPlan('daily')" class="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all">Hemen Al</button>
+        </div>
+
+        <div class="glass p-8 rounded-3xl border-blue-500/50 relative flex flex-col justify-between shadow-[0_0_40px_rgba(59,130,246,0.15)]">
+            <div class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] px-4 py-1 font-bold uppercase rounded-bl-xl">EN POPÜLER</div>
+            <div>
+                <h4 class="text-lg font-bold mb-2 text-blue-400">Aylık Pro</h4>
+                <div class="text-3xl font-black mb-6">149 TL <span class="text-sm font-normal text-gray-500">/30 Gün</span></div>
+                <ul class="space-y-3 mb-8 text-gray-100 text-xs">
+                    <li>✔ <b>Turbo Hız</b> (10x Paralel Motor)</li>
+                    <li>✔ Sınırsız Video Sayısı</li>
+                    <li>✔ Reklamsız Deneyim</li>
+                    <li>✔ 30 Günlük Lisans Anahtarı</li>
+                </ul>
+            </div>
+            <button onclick="buyPlan('monthly')" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all transform hover:scale-105">Pro'ya Geç 🚀</button>
+        </div>
+
+        <div class="glass p-8 rounded-3xl border-white/5 flex flex-col justify-between">
+            <div>
+                <h4 class="text-lg font-bold mb-2">Yıllık</h4>
+                <div class="text-3xl font-black mb-6">599 TL <span class="text-sm font-normal text-gray-500">/Yıl</span></div>
+                <ul class="space-y-3 mb-8 text-gray-400 text-xs">
+                    <li>✔ Tek Ödeme, Sınırsız Kullanım</li>
+                    <li>✔ Tüm Gelecek Özellikler Dahil</li>
+                    <li>✔ Öncelikli Sunucu Erişimi</li>
+                    <li>✔ 320kbps Ultra Kalite</li>
+                </ul>
+            </div>
+            <button onclick="buyPlan('lifetime')" class="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all">Sonsuza Kadar Al</button>
+        </div>
+    </div>
+</section>
 <!-- Neden Biz? -->
 <section class="mt-32">
     <div class="flex flex-col md:flex-row items-center gap-16">
@@ -213,18 +269,48 @@ section {
                 Çoğu servis 50 video sınırı koyarken, PlaylistZip ile <strong>sınırsız playlist indirme</strong> deneyimi yaşarsınız. 100, 200 veya daha fazla videodan oluşan devasa listeleri tek bir <strong>ZIP paketi</strong> halinde sunuyoruz. <em>YouTube toplu müzik indirme</em> işlemlerinizde FFmpeg teknolojisi kullanarak ses kaybını minimize ediyor ve orijinal stüdyo kalitesini koruyoruz.
             </p>
             <p>
-                İster Windows, ister Mac, isterseniz mobil cihazlarınızdan <strong>online YouTube MP3 dönüştürücü</strong> hizmetimizden ücretsiz yararlanabilirsiniz. PlaylistZip, kullanıcı gizliliğine önem verir; indirdiğiniz içerikler sunucularımızda saklanmaz ve işlem bittiği an kalıcı olarak silinir. <strong>En hızlı YouTube playlist indirici</strong> arayışınızda PlaylistZip, Mersin ve İzmir merkezli yerli yazılım gücüyle yanınızda.
+                İster Windows, ister Mac, isterseniz mobil cihazlarınızdan <strong>online YouTube MP3 dönüştürücü</strong> hizmetimizden ücretsiz yararlanabilirsiniz. PlaylistZip, kullanıcı gizliliğine önem verir; indirdiğiniz içerikler sunucularımızda saklanmaz ve işlem bittiği an kalıcı olarak silinir. <strong>En hızlı YouTube playlist indirici</strong> arayışınızda PlaylistZip, Türkiye merkezli yerli yazılım gücüyle yanınızda.
             </p>
         </div>
     </div>
 </section>
+   <section class="mt-20 border-t border-white/5 pt-12">
+    <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        
+        <div>
+            <h5 class="text-white font-bold text-sm mb-4">Hakkımızda & İletişim</h5>
+            <p class="text-gray-500 text-[11px] leading-relaxed">
+                PlaylistZip, Türkiye merkezli bir yazılım girişimidir. Kullanıcı dostu araçlarla dijital dönüşümü hızlandırıyoruz.<br><br>
+                <b>E-posta:</b> support@playlistzipmp3.com<br>
+                <b>Adres:</b> Yenişehir, Mersin / Türkiye
+            </p>
+        </div>
 
-       <footer class="mt-40 pt-10 border-t border-white/5 text-center">
-    <div class="flex justify-center gap-8 mb-8 text-gray-500">
-        <a href="#" class="hover:text-white transition-colors">Ana Sayfa</a>
-        <a href="#" class="hover:text-white transition-colors">Kullanım Şartları</a>
-        <a href="#" class="hover:text-white transition-colors">İletişim</a>
+        <div>
+            <h5 class="text-white font-bold text-sm mb-4">Satış Sözleşmesi</h5>
+            <div class="h-32 overflow-y-auto pr-2 custom-scrollbar text-gray-500 text-[10px] leading-tight">
+                İşbu sözleşme, alıcının playlistzipmp3.com üzerinden satın aldığı dijital lisans anahtarı hizmetini kapsar. Satıcı, belirtilen süre boyunca (24s/30g/Ömür Boyu) hizmetin teknik olarak sunulmasını taahhüt eder. Kullanıcı, satın aldığı anahtarı ticari amaçla kiralayamaz veya satamaz.
+            </div>
+        </div>
+
+        <div>
+            <h5 class="text-white font-bold text-sm mb-4">İade Koşulları</h5>
+            <p class="text-gray-500 text-[10px] leading-relaxed italic">
+                <b>ÖNEMLİ:</b> 6502 sayılı Tüketicinin Korunması Hakkında Kanun gereği, dijital ortamda anında teslim edilen lisans anahtarları (dijital içerik) iade kapsamı dışındadır. Satın alınan anahtar kullanıcıya ulaştığı andan itibaren cayma hakkı kullanılamaz.
+            </p>
+        </div>
+
+        <div>
+            <h5 class="text-white font-bold text-sm mb-4">Gizlilik Politikası</h5>
+            <div class="h-32 overflow-y-auto pr-2 custom-scrollbar text-gray-500 text-[10px] leading-tight">
+                Verileriniz bizimle güvende. YouTube URL'leri sadece işleme alınmak için geçici olarak tutulur. İndirme bittiği an sunucudan silinir. Ödeme işlemleri doğrudan PayTR altyapısı üzerinden şifreli olarak gerçekleşir. Çerezler (cookies) sadece lisans anahtarınızı tarayıcıda hatırlamak için kullanılır.
+            </div>
+        </div>
+
     </div>
+</section>
+       <footer class="mt-40 pt-10 border-t border-white/5 text-center">
+   
     <p class="text-gray-600 text-xs">
         &copy; 2026 PlaylistZip AI. ACE Labs tarafından geliştirilmiştir. <br>
         Tüm hakları saklıdır.

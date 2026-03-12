@@ -7,6 +7,10 @@ const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
 const { exec } = require('child_process');
+const Datastore = require('nedb');
+const db = new Datastore({ filename: './database/licenses.db', autoload: true })
+
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -115,7 +119,7 @@ app.get('/api/download-playlist-zip', async (req, res) => {
         archive.pipe(res);
 
         // --- 3. PARALEL İNDİRME VE PAKETLEME (CHUNK MANTIĞI) ---
-        const concurrentLimit = 5; // Aynı anda inecek video sayısı
+        const concurrentLimit = (isValidLicense) ? 5 : 1;// Aynı anda inecek video sayısı
         
         for (let i = 0; i < allVideos.length; i += concurrentLimit) {
             const chunk = allVideos.slice(i, i + concurrentLimit);
@@ -163,10 +167,46 @@ app.get('/api/download-playlist-zip', async (req, res) => {
     }
 });
 
+app.get('/api/verify-license', (req, res) => {
+    const userKey = req.query.key;
+
+    db.findOne({ key: userKey }, (err, doc) => {
+        if (err || !doc) {
+            return res.json({ valid: false, message: "Geçersiz anahtar." });
+        }
+
+        const now = new Date();
+        if (now > doc.expireDate) {
+            return res.json({ valid: false, message: "Anahtarın süresi dolmuş." });
+        }
+
+        res.json({ valid: true, type: doc.type });
+    });
+});
+function createLicense(planType) {
+    const key = 'SZ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    let expireDate = new Date();
+
+    if (planType === 'daily') expireDate.setHours(expireDate.getHours() + 24);
+    else if (planType === 'monthly') expireDate.setMonth(expireDate.getMonth() + 1);
+    else if (planType === 'lifetime') expireDate.setFullYear(expireDate.getFullYear() + 100);
+
+    const doc = {
+        key: key,
+        type: planType,
+        expireDate: expireDate,
+        createdAt: new Date()
+    };
+
+    db.insert(doc);
+    return key;
+}
 // Sunucu Başlatma
 const server = app.listen(PORT, () => {
     console.log(`>>> StreamZip Sunucusu http://localhost:${PORT} üzerinde çalışıyor.`);
 });
+
+
 
 // Timeout süresini 10 dakikaya çıkar (Büyük playlistler için)
 server.timeout = 1200000;
