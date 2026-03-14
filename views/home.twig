@@ -480,66 +480,72 @@ function toggleLicenseInput() {
     }
 }
 
-// activateLicense fonksiyonu içinde başarı durumuna şu eklemeyi yap:
-function applyVipTheme() {
-    // Tireli ID'yi tam olarak yazıyoruz: 'vip-badge'
-    const vipBadge = document.getElementById('vip-badge'); 
-    const downloadContainer = document.getElementById('downloadContainer');
-
-    if (vipBadge) {
-        // 'hidden' sınıfını kaldırıp 'flex' (veya blok) yapıyoruz
-        vipBadge.classList.remove('hidden');
-        vipBadge.classList.add('flex');
-        console.log("VIP Rozeti artık görünür.");
-    } else {
-        console.warn("Hata: 'vip-badge' ID'sine sahip element sayfada bulunamadı!");
-    }
-
-    if (downloadContainer) {
-        // Konteynerın etrafına mavi bir parıltı ekleyelim (Senin temanla uyumlu olsun)
-        downloadContainer.classList.add('border-blue-500', 'shadow-[0_0_30px_rgba(59,130,246,0.3)]');
-    }
-}
 async function activateLicense() {
-    const key = document.getElementById('license-key-input').value.trim();
-    if (!key) return;
+    const inputEl = document.getElementById('license-key-input');
+    const emailEl = document.getElementById('userEmail'); // Email inputunun ID'si bu olmalı
 
-    const res = await fetch(`/api/check-license?key=${key}`);
-    const data = await res.json();
+    if (!inputEl) return console.error("Hata: 'license-key-input' bulunamadı.");
+    
+    const key = inputEl.value.trim();
+    const email = emailEl ? emailEl.value.trim() : "";
 
-    if (data.isValid) {
-        // 1. Anahtarı tarayıcıya kaydet
-        localStorage.setItem('license_key', key);
-        
-        // 2. Görsel değişimi tetikle
-        applyVipTheme();
-        
-        alert("Tebrikler! Turbo indirme ve 320kbps kalitesi aktif edildi.");
-    } else {
-        alert("Geçersiz veya süresi dolmuş anahtar!");
+    if (!key) {
+        alert("Lütfen lisans anahtarınızı girin.");
+        return;
+    }
+
+    try {
+        // Backend'deki yeni yapımıza uygun sorgu (Key + Email)
+        const res = await fetch(`/api/verify-license?key=${key}&email=${email}`);
+        const data = await res.json();
+
+        if (data.valid) {
+            localStorage.setItem('license_key', key);
+            localStorage.setItem('license_email', email);
+            
+            applyVipTheme();
+            alert("Tebrikler! Premium Turbo Mod aktif edildi. Sayfayı yenilemeden kullanabilirsiniz.");
+        } else {
+            alert(data.message || "Geçersiz veya süresi dolmuş anahtar!");
+        }
+    } catch (error) {
+        console.error("Lisans doğrulama hatası:", error);
+        alert("Sunucuyla bağlantı kurulamadı.");
     }
 }
 
 function applyVipTheme() {
-    // Giriş alanını gizle, VIP rozetini göster
-    document.getElementById('license-input-wrapper').classList.add('hidden');
-    document.getElementById('vip-badge').classList.remove('hidden');
-    document.getElementById('vip-badge').classList.add('flex');
+    // 1. Elementleri seçelim
+    const wrapper = document.getElementById('license-input-wrapper');
+    const badge = document.getElementById('vip-badge');
+    const downloadBtn = document.getElementById('downloadContainer'); // Eğer varsa
 
-    // Sitenin ana renklerini "Gold/Premium Blue" yap (Tailwind veya CSS değişkenleri ile)
-    document.documentElement.style.setProperty('--primary-color', '#3b82f6'); // Parlak Mavi
+    // 2. Güvenli Kontrol (Eğer element varsa işlem yap)
+    if (wrapper) {
+        wrapper.classList.add('hidden');
+    }
+
+    if (badge) {
+        badge.classList.remove('hidden');
+        badge.classList.add('flex'); // Flexbox animasyonu için
+        console.log("VIP Rozeti aktif edildi.");
+    }
+
+    // 3. Görsel İyileştirmeler
+    document.documentElement.style.setProperty('--primary-color', '#3b82f6');
     document.body.classList.add('premium-mode');
     
-    // Opsiyonel: Arka plana hafif bir parıltı ekle
+    // Arka plan parıltısı (Opsiyonel)
     document.body.style.boxShadow = "inset 0 0 100px rgba(59, 130, 246, 0.1)";
 }
 
-// Sayfa yüklendiğinde anahtar var mı diye bak
-window.onload = () => {
-    if (localStorage.getItem('license_key')) {
+// Sayfa yüklendiğinde otomatik kontrol
+window.addEventListener('DOMContentLoaded', () => {
+    const savedKey = localStorage.getItem('license_key');
+    if (savedKey) {
         applyVipTheme();
     }
-};
+});
 function startDownload() {
     const playlistId = "ALINAN_PLAYLIST_ID";
     const userKey = localStorage.getItem('license_key') || ''; // Varsa al, yoksa boş gönder
