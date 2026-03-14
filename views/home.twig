@@ -480,22 +480,56 @@ function toggleLicenseInput() {
     }
 }
 
-async function activateLicense() {
-    const inputEl = document.getElementById('license-key-input');
-    const emailEl = document.getElementById('userEmail'); // Email inputunun ID'si bu olmalı
+function applyVipTheme() {
+    console.log(">>> VIP Tema Uygulama Başladı...");
 
-    if (!inputEl) return console.error("Hata: 'license-key-input' bulunamadı.");
-    
-    const key = inputEl.value.trim();
-    const email = emailEl ? emailEl.value.trim() : "";
+    // Kullanılacak tüm elementleri güvenli bir listeye alalım
+    const elements = {
+        wrapper: document.getElementById('license-input-wrapper'),
+        badge: document.getElementById('vip-badge'),
+        container: document.getElementById('downloadContainer')
+    };
+
+    // Her birini tek tek kontrol et (Eğer varsa işlem yap)
+    if (elements.wrapper) {
+        elements.wrapper.classList.add('hidden');
+        console.log("✅ Giriş alanı gizlendi.");
+    } else {
+        console.warn("⚠️ 'license-input-wrapper' bulunamadı, gizleme atlandı.");
+    }
+
+    if (elements.badge) {
+        elements.badge.classList.remove('hidden');
+        elements.badge.classList.add('flex');
+        console.log("✅ VIP Rozeti gösterildi.");
+    } else {
+        console.warn("⚠️ 'vip-badge' bulunamadı, rozet gösterimi atlandı.");
+    }
+
+    // Görsel efektleri her durumda uygula
+    document.body.classList.add('premium-mode');
+    document.documentElement.style.setProperty('--primary-color', '#3b82f6');
+}
+
+// 2. Lisans Aktifleştirme Fonksiyonu
+async function activateLicense() {
+    const keyInput = document.getElementById('license-key-input');
+    const emailInput = document.getElementById('userEmail'); // Input ID'niz bu değilse düzeltin
+
+    if (!keyInput) {
+        console.error("❌ Hata: 'license-key-input' ID'li input bulunamadı!");
+        return;
+    }
+
+    const key = keyInput.value.trim();
+    const email = emailInput ? emailInput.value.trim() : "";
 
     if (!key) {
-        alert("Lütfen lisans anahtarınızı girin.");
+        alert("Lütfen anahtarınızı girin.");
         return;
     }
 
     try {
-        // Backend'deki yeni yapımıza uygun sorgu (Key + Email)
         const res = await fetch(`/api/verify-license?key=${key}&email=${email}`);
         const data = await res.json();
 
@@ -503,47 +537,29 @@ async function activateLicense() {
             localStorage.setItem('license_key', key);
             localStorage.setItem('license_email', email);
             
-            applyVipTheme();
-            alert("Tebrikler! Premium Turbo Mod aktif edildi. Sayfayı yenilemeden kullanabilirsiniz.");
+            // Hata olsa bile activateLicense durmasın diye try-catch içine alıyoruz
+            try {
+                applyVipTheme();
+            } catch (e) {
+                console.error("Tema uygulanırken hata oluştu ama lisans geçerli:", e);
+            }
+            
+            alert("Tebrikler! Premium Turbo Mod aktif.");
         } else {
-            alert(data.message || "Geçersiz veya süresi dolmuş anahtar!");
+            alert(data.message || "Geçersiz anahtar.");
         }
     } catch (error) {
-        console.error("Lisans doğrulama hatası:", error);
-        alert("Sunucuyla bağlantı kurulamadı.");
+        console.error("Bağlantı hatası:", error);
+        alert("Sunucuya ulaşılamıyor.");
     }
 }
 
-function applyVipTheme() {
-    // 1. Elementleri seçelim
-    const wrapper = document.getElementById('license-input-wrapper');
-    const badge = document.getElementById('vip-badge');
-    const downloadBtn = document.getElementById('downloadContainer'); // Eğer varsa
-
-    // 2. Güvenli Kontrol (Eğer element varsa işlem yap)
-    if (wrapper) {
-        wrapper.classList.add('hidden');
-    }
-
-    if (badge) {
-        badge.classList.remove('hidden');
-        badge.classList.add('flex'); // Flexbox animasyonu için
-        console.log("VIP Rozeti aktif edildi.");
-    }
-
-    // 3. Görsel İyileştirmeler
-    document.documentElement.style.setProperty('--primary-color', '#3b82f6');
-    document.body.classList.add('premium-mode');
-    
-    // Arka plan parıltısı (Opsiyonel)
-    document.body.style.boxShadow = "inset 0 0 100px rgba(59, 130, 246, 0.1)";
-}
-
-// Sayfa yüklendiğinde otomatik kontrol
+// 3. Sayfa Yüklendiğinde Otomatik Kontrol
 window.addEventListener('DOMContentLoaded', () => {
     const savedKey = localStorage.getItem('license_key');
     if (savedKey) {
-        applyVipTheme();
+        // Sayfa yeni yüklendiğinde de hata vermemesi için güvenli çağırıyoruz
+        setTimeout(applyVipTheme, 100); 
     }
 });
 function startDownload() {
