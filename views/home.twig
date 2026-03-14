@@ -482,18 +482,23 @@ function toggleLicenseInput() {
 
 // activateLicense fonksiyonu içinde başarı durumuna şu eklemeyi yap:
 function applyVipTheme() {
-    // Tüm giriş alanlarını gizle
-    document.getElementById('btn-show-license').classList.add('hidden');
-    document.getElementById('license-input-area').classList.add('hidden');
-    document.getElementById('license-key-input').focus();
-    
-    // VIP Rozetini göster
-    const badge = document.getElementById('vip-badge');
-    badge.classList.remove('hidden');
-    badge.classList.add('flex');
-    
-    // Sayfa stilini güncelle
-    document.body.classList.add('premium-mode');
+    // Tireli ID'yi tam olarak yazıyoruz: 'vip-badge'
+    const vipBadge = document.getElementById('vip-badge'); 
+    const downloadContainer = document.getElementById('downloadContainer');
+
+    if (vipBadge) {
+        // 'hidden' sınıfını kaldırıp 'flex' (veya blok) yapıyoruz
+        vipBadge.classList.remove('hidden');
+        vipBadge.classList.add('flex');
+        console.log("VIP Rozeti artık görünür.");
+    } else {
+        console.warn("Hata: 'vip-badge' ID'sine sahip element sayfada bulunamadı!");
+    }
+
+    if (downloadContainer) {
+        // Konteynerın etrafına mavi bir parıltı ekleyelim (Senin temanla uyumlu olsun)
+        downloadContainer.classList.add('border-blue-500', 'shadow-[0_0_30px_rgba(59,130,246,0.3)]');
+    }
 }
 async function activateLicense() {
     const key = document.getElementById('license-key-input').value.trim();
