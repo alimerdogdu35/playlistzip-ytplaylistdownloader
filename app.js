@@ -476,39 +476,37 @@ app.get('/api/download-playlist-zip', async (req, res) => {
 });
 
 app.get('/api/verify-license', (req, res) => {
-    const userKey = req.query.key;
+    // 1. Gelen verileri temizleyelim
+    const userKey = req.query.key ? req.query.key.trim() : null;
+    const userEmail = req.query.email ? req.query.email.trim().toLowerCase() : null;
 
-    db.findOne({ key: userKey }, (err, doc) => {
+    if (!userKey || !userEmail) {
+        return res.json({ valid: false, message: "Lisans anahtarı ve e-posta gerekli." });
+    }
+
+    // 2. Veritabanında hem key hem email hem de aktiflik durumuna bakalım
+    db.findOne({ key: userKey, email: userEmail, active: true }, (err, doc) => {
         if (err || !doc) {
-            return res.json({ valid: false, message: "Geçersiz anahtar." });
+            return res.json({ valid: false, message: "Geçersiz anahtar veya e-posta uyuşmuyor." });
         }
 
+        // 3. Tarih Kontrolü (Sağlamlaştırma)
         const now = new Date();
-        if (now > doc.expireDate) {
-            return res.json({ valid: false, message: "Anahtarın süresi dolmuş." });
+        const expireDate = new Date(doc.expireDate); // Tarihi nesneye çevir
+
+        if (now > expireDate) {
+            return res.json({ valid: false, message: "Bu anahtarın kullanım süresi dolmuş." });
         }
 
-        res.json({ valid: true, type: doc.type });
+        // 4. Başarılı! (Plan tipini doğru gönderdiğinden emin ol)
+        res.json({ 
+            valid: true, 
+            plan: doc.plan, // Veritabanında 'plan' diye kaydetmiştik
+            expireDate: doc.expireDate 
+        });
     });
 });
-function createLicense(planType) {
-    const key = 'SZ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-    let expireDate = new Date();
 
-    if (planType === 'daily') expireDate.setHours(expireDate.getHours() + 24);
-    else if (planType === 'monthly') expireDate.setMonth(expireDate.getMonth() + 1);
-    else if (planType === 'lifetime') expireDate.setFullYear(expireDate.getFullYear() + 100);
-
-    const doc = {
-        key: key,
-        type: planType,
-        expireDate: expireDate,
-        createdAt: new Date()
-    };
-
-    db.insert(doc);
-    return key;
-}
 // Sunucu Başlatma
 const server = app.listen(PORT, () => {
     console.log(`>>> StreamZip Sunucusu http://localhost:${PORT} üzerinde çalışıyor.`);
