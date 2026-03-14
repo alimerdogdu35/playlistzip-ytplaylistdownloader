@@ -14,7 +14,10 @@ const qs = require('qs');
 const axios = require('axios');
 const FormData = require('form-data');
 const crypto = require('crypto');
-const db = new Datastore({ filename: './database/licenses.db', autoload: true })
+const db = new Datastore({ 
+    filename: path.join(__dirname, 'database', 'licenses.db'), 
+    autoload: true 
+});
 
 
 
