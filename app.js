@@ -85,7 +85,7 @@ app.post('/callback/paytr', async (req, res) => {
         let durationDays = 1;
         
         if (total_amount === "14900") { plan = 'monthly'; durationDays = 30; }
-        else if (total_amount === "59900") { plan = 'lifetime'; durationDays = 36500; } // 100 yıl
+        else if (total_amount === "59900") { plan = 'lifetime'; durationDays = 365; } // 100 yıl
 
         // 2. Anahtarı üret ve bitiş tarihini hesapla
         const newKey = generateLicenseKey(plan);
@@ -288,7 +288,7 @@ app.get('/success', (req, res) => {
 
         const license = docs[0];
         res.render('success', { 
-            status: 'completed',
+            status: 'success',
             licenseKey: license.key,
             expireDate: license.expireDate
         });
