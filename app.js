@@ -372,6 +372,7 @@ app.get('/api/get-playlist-info', async (req, res) => {
 app.get('/api/download-playlist-zip', async (req, res) => {
     const playlistId = req.query.id;
     const licenseKey = req.query.key;
+    const userEmail = req.query.email ? req.query.email.trim().toLowerCase() : null;
 
     if (!playlistId) return res.status(400).send('Playlist ID gerekli.');
 
@@ -382,30 +383,32 @@ app.get('/api/download-playlist-zip', async (req, res) => {
             id: playlistId
         });
 
-        const rawTitle = playlistMeta.data.items[0]?.snippet.title || "Playlist";
-        const sanitizedTitle = rawTitle.replace(/[\\/*?:"<>|]/g, "_");
-        // --- 0. LİSANS KONTROLÜ (Callback'ten Promise'e Dönüştürüldü) ---
-        let isValidLicense = false;
-        let audioQuality = '5'; // Standart: ~128kbps
-        let concurrentLimit = 1; // Standart: Tek tek
+        if (!playlistMeta.data.items.length) return res.status(404).send('Playlist bulunamadı.');
 
-        if (licenseKey) {
-            // NeDB findOne işlemini await ile bekleyebilmek için:
+        const rawTitle = playlistMeta.data.items[0].snippet.title || "Playlist";
+        const sanitizedTitle = rawTitle.replace(/[\\/*?:"<>|]/g, "_");
+
+        // 0. LİSANS KONTROLÜ
+        let isValidLicense = false;
+        let audioQuality = '5'; 
+        let concurrentLimit = 1; 
+
+        if (licenseKey && userEmail) {
             const license = await new Promise((resolve) => {
-                db.findOne({ key: licenseKey, active: true }, (err, doc) => resolve(doc));
+                db.findOne({ key: licenseKey, email: userEmail, active: true }, (err, doc) => resolve(doc));
             });
 
             const now = new Date();
             if (license && now < new Date(license.expireDate)) {
                 isValidLicense = true;
-                audioQuality = '0'; // VIP: 320kbps (En yüksek)
-                concurrentLimit = 3; // VIP: Aynı anda 5 indirme (Turbo Hız)
+                audioQuality = '0'; // 320kbps
+                concurrentLimit = 3; // Sunucu RAM'ini korumak için 3 idealdir
             }
         }
 
         console.log(`>>> İstek Alındı: ${isValidLicense ? '🚀 VIP (Turbo)' : '🐌 Standart'}`);
 
-        // --- 1. TÜM VİDEOLARI LİSTELE ---
+        // 1. TÜM VİDEOLARI LİSTELE
         let allVideos = [];
         let nextPageToken = '';
         do {
@@ -429,21 +432,19 @@ app.get('/api/download-playlist-zip', async (req, res) => {
         if (allVideos.length > 50 && !isValidLicense) {
             return res.status(403).send('ERROR_LIMIT: 50 videodan fazla playlistler için Premium Lisans gereklidir.');
         }
-        // --- 2. ZIP AYARLARI ---
+
+        // 2. HTTP BAŞLIKLARI (Zaman aşımını engellemek için hemen gönderilmeli)
         res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename=PlaylistZip.zip`);
-        res.setHeader('Transfer-Encoding', 'chunked'); // Cloudflare için kritik
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(sanitizedTitle)}.zip"`);
+        // Cloudflare ve Nginx'e veri akışının başladığını bildirir
+        res.setHeader('Transfer-Encoding', 'chunked'); 
+
         const archive = archiver('zip', { zlib: { level: 5 } });
-
-        // Artık dosya ismi dinamik: "Playlist_Ismi.zip"
-        res.attachment(`${sanitizedTitle}.zip`);
-
         archive.pipe(res);
 
-        // Geçici dosyaları takip etmek için bir dizi
         const tempFiles = [];
 
-        // --- 3. PARALEL İNDİRME (VIP HIZI BURADA DEVREYE GİRİYOR) ---
+        // 3. PARALEL İNDİRME MOTORU
         for (let i = 0; i < allVideos.length; i += concurrentLimit) {
             const chunk = allVideos.slice(i, i + concurrentLimit);
             
@@ -452,28 +453,32 @@ app.get('/api/download-playlist-zip', async (req, res) => {
                 const tempFilePath = path.join(downloadsDir, tempFileName);
                 const videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
                 
-                // VIP ise 320kbps, Standart ise 128kbps indirir
                 const downloadCommand = `yt-dlp -x --audio-format mp3 --audio-quality ${audioQuality} -o "${tempFilePath}" "${videoUrl}"`;
 
                 return new Promise((resolve) => {
                     exec(downloadCommand, (error) => {
                         if (!error && fs.existsSync(tempFilePath)) {
+                            // HATA DÜZELTİLDİ: 'v.title' yerine 'video.title' kullanıldı
                             archive.append(fs.createReadStream(tempFilePath), { name: `${video.title}.mp3` });
-                            tempFiles.push(tempFilePath); // Silinmek üzere listeye ekle
-                            console.log(`✅ ${v.title} hazırlandı.`);
+                            tempFiles.push(tempFilePath);
+                            console.log(`✅ ${video.title} paketlendi.`);
+                        } else {
+                            console.error(`❌ Hata: ${video.title} indirilemedi.`);
                         }
                         resolve(); 
                     });
                 });
             }));
-            res.write('');
+
+            // Her gruptan sonra boş bir "heartbeat" göndererek bağlantıyı canlı tut
+            res.write(''); 
         }
 
         await archive.finalize();
 
-        // --- 4. TEMİZLİK (İndirme bittikten sonra geçici dosyaları siler) ---
+        // 4. TEMİZLİK
         res.on('finish', () => {
-            console.log(">>> ZIP Gönderildi. Temizlik yapılıyor...");
+            console.log(">>> ZIP Tamamlandı. Dosyalar siliniyor...");
             tempFiles.forEach(file => {
                 if (fs.existsSync(file)) {
                     fs.unlink(file, (err) => { if (err) console.error("Silme hatası:", err); });
@@ -482,7 +487,7 @@ app.get('/api/download-playlist-zip', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Genel Hata:', error);
+        console.error('Kritik Hata:', error);
         if (!res.headersSent) res.status(500).send('Sunucu hatası.');
     }
 });
