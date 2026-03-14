@@ -2,6 +2,7 @@ const path = require('path');
 process.env.NODE_PATH = path.join(__dirname, 'node_modules');
 require('module').Module._initPaths();
 require('dotenv').config();
+
 const express = require('express');
 const { google } = require('googleapis');
 const youtubeDl = require('yt-dlp-exec');
@@ -14,6 +15,8 @@ const qs = require('qs');
 const axios = require('axios');
 const FormData = require('form-data');
 const crypto = require('crypto');
+
+// Veritabanları (NeDB)
 const db = new Datastore({ 
     filename: path.join(__dirname, 'database', 'licenses.db'), 
     autoload: true 
@@ -305,15 +308,15 @@ app.get('/success', (req, res) => {
         }
     });
 });
-app.get('/api/check-license', async (req, res) => {
+app.get('/api/check-license', (req, res) => {
     const key = req.query.key;
-    const license = await db.findOne({ key: key });
-    
-    if (license && new Date() < new Date(license.expireDate)) {
-        res.json({ isValid: true, plan: license.plan });
-    } else {
-        res.json({ isValid: false });
-    }
+    db.findOne({ key: key }, (err, license) => {
+        if (license && new Date() < new Date(license.expireDate)) {
+            res.json({ isValid: true, plan: license.plan });
+        } else {
+            res.json({ isValid: false });
+        }
+    });
 });
 app.get('/api/get-playlist-info', async (req, res) => {
     const { id } = req.query;
@@ -476,34 +479,20 @@ app.get('/api/download-playlist-zip', async (req, res) => {
 });
 
 app.get('/api/verify-license', (req, res) => {
-    // 1. Gelen verileri temizleyelim
     const userKey = req.query.key ? req.query.key.trim() : null;
     const userEmail = req.query.email ? req.query.email.trim().toLowerCase() : null;
 
     if (!userKey || !userEmail) {
-        return res.json({ valid: false, message: "Lisans anahtarı ve e-posta gerekli." });
+        return res.json({ valid: false, message: "Eksik bilgi." });
     }
 
-    // 2. Veritabanında hem key hem email hem de aktiflik durumuna bakalım
     db.findOne({ key: userKey, email: userEmail, active: true }, (err, doc) => {
-        if (err || !doc) {
-            return res.json({ valid: false, message: "Geçersiz anahtar veya e-posta uyuşmuyor." });
-        }
+        if (err || !doc) return res.json({ valid: false, message: "Geçersiz lisans." });
 
-        // 3. Tarih Kontrolü (Sağlamlaştırma)
         const now = new Date();
-        const expireDate = new Date(doc.expireDate); // Tarihi nesneye çevir
+        if (now > new Date(doc.expireDate)) return res.json({ valid: false, message: "Süresi dolmuş." });
 
-        if (now > expireDate) {
-            return res.json({ valid: false, message: "Bu anahtarın kullanım süresi dolmuş." });
-        }
-
-        // 4. Başarılı! (Plan tipini doğru gönderdiğinden emin ol)
-        res.json({ 
-            valid: true, 
-            plan: doc.plan, // Veritabanında 'plan' diye kaydetmiştik
-            expireDate: doc.expireDate 
-        });
+        res.json({ valid: true, plan: doc.plan });
     });
 });
 
