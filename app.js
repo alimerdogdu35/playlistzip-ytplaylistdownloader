@@ -132,8 +132,8 @@ const amount = (prices[planType] || 4900).toString()
 const merchant_id = process.env.PAYTR_MERCHANT_ID
 const merchant_key = process.env.PAYTR_MERCHANT_KEY
 const merchant_salt = process.env.PAYTR_MERCHANT_SALT
-
-const merchant_oid = "SZ" + Date.now() + "---" + userEmail;
+    
+const merchant_oid = "SZ" + Date.now() + "---" + email;
 
 // IP
 let user_ip =
