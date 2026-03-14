@@ -128,6 +128,7 @@ app.post('/pay/create-checkout', async (req, res) => {
 try {
 
 let { email, planType } = req.body
+if (!email) return res.status(400).send("Email adresi gerekli.");
 email = (email || "test@test.com").trim().toLowerCase()
 
 const prices = {
@@ -479,23 +480,27 @@ app.get('/api/download-playlist-zip', async (req, res) => {
 });
 
 app.get('/api/verify-license', (req, res) => {
-    const userKey = req.query.key ? req.query.key.trim() : null;
-    const userEmail = req.query.email ? req.query.email.trim().toLowerCase() : null;
-
-    if (!userKey || !userEmail) {
-        return res.json({ valid: false, message: "Eksik bilgi." });
+    const { key, email } = req.query;
+    
+    // Eksik bilgi uyarısını burada bitiriyoruz
+    if (!key || !email) {
+        return res.json({ valid: false, message: "Anahtar ve e-posta adresi eksik." });
     }
 
-    db.findOne({ key: userKey, email: userEmail, active: true }, (err, doc) => {
-        if (err || !doc) return res.json({ valid: false, message: "Geçersiz lisans." });
-
-        const now = new Date();
-        if (now > new Date(doc.expireDate)) return res.json({ valid: false, message: "Süresi dolmuş." });
-
+    db.findOne({ 
+        key: key.trim(), 
+        email: email.trim().toLowerCase(), 
+        active: true 
+    }, (err, doc) => {
+        if (err || !doc) return res.json({ valid: false, message: "Geçersiz lisans veya e-posta." });
+        
+        if (new Date() > new Date(doc.expireDate)) {
+            return res.json({ valid: false, message: "Lisans süresi dolmuş." });
+        }
+        
         res.json({ valid: true, plan: doc.plan });
     });
 });
-
 // Sunucu Başlatma
 const server = app.listen(PORT, () => {
     console.log(`>>> StreamZip Sunucusu http://localhost:${PORT} üzerinde çalışıyor.`);

@@ -77,17 +77,19 @@ section {
         <span class="text-sm font-bold tracking-wide text-blue-100 uppercase">Premium'u Etkinleştir</span>
     </button>
 
-    <div id="license-input-area" class="hidden opacity-0 transform -translate-y-4 transition-all duration-500 mt-4">
-        <div class="glass p-2 rounded-2xl border-white/10 flex items-center gap-2">
-            <input type="text" id="license-key-input" placeholder="Anahtarınızı buraya yapıştırın..." 
-                   class="bg-transparent border-none outline-none text-sm w-full px-4 text-white placeholder:text-gray-600">
-            <button onclick="activateLicense()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl text-xs font-black transition-all">
-                ONAYLA
-            </button>
-        </div>
-        <p class="text-[10px] text-gray-500 mt-2 text-center">Anahtarınız yok mu? <a href="#pricing" class="text-blue-400 hover:underline">Hemen bir tane edinin.</a></p>
+    <div id="license-input-area" class="hidden mt-4 space-y-3">
+    <div class="glass p-4 rounded-2xl border-white/10 space-y-3">
+        <input type="email" id="activationEmail" placeholder="Satın aldığınız e-posta..." 
+               class="bg-white/5 border border-white/10 outline-none text-sm w-full px-4 py-3 rounded-xl text-white">
+        
+        <input type="text" id="license-key-input" placeholder="SZ-..." 
+               class="bg-white/5 border border-white/10 outline-none text-sm w-full px-4 py-3 rounded-xl text-white font-mono">
+        
+        <button onclick="activateLicense()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl text-xs font-black transition-all">
+            ONAYLA
+        </button>
     </div>
-
+</div>
     <div id="vip-badge" class="hidden items-center justify-center gap-3 p-4 bg-blue-600/10 rounded-2xl border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.15)]">
         <div class="flex h-3 w-3">
             <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-blue-400 opacity-75"></span>
@@ -480,78 +482,44 @@ function toggleLicenseInput() {
     }
 }
 
-function applyVipTheme() {
-    console.log(">>> VIP Tema Uygulama Başladı...");
-
-    // Kullanılacak tüm elementleri güvenli bir listeye alalım
-    const elements = {
-        wrapper: document.getElementById('license-input-wrapper'),
-        badge: document.getElementById('vip-badge'),
-        container: document.getElementById('downloadContainer')
-    };
-
-    // Her birini tek tek kontrol et (Eğer varsa işlem yap)
-    if (elements.wrapper) {
-        elements.wrapper.classList.add('hidden');
-        console.log("✅ Giriş alanı gizlendi.");
-    } else {
-        console.warn("⚠️ 'license-input-wrapper' bulunamadı, gizleme atlandı.");
-    }
-
-    if (elements.badge) {
-        elements.badge.classList.remove('hidden');
-        elements.badge.classList.add('flex');
-        console.log("✅ VIP Rozeti gösterildi.");
-    } else {
-        console.warn("⚠️ 'vip-badge' bulunamadı, rozet gösterimi atlandı.");
-    }
-
-    // Görsel efektleri her durumda uygula
-    document.body.classList.add('premium-mode');
-    document.documentElement.style.setProperty('--primary-color', '#3b82f6');
-}
-
-// 2. Lisans Aktifleştirme Fonksiyonu
 async function activateLicense() {
-    const keyInput = document.getElementById('license-key-input');
-    const emailInput = document.getElementById('userEmail'); // Input ID'niz bu değilse düzeltin
+    const email = document.getElementById('activationEmail').value.trim();
+    const key = document.getElementById('license-key-input').value.trim();
 
-    if (!keyInput) {
-        console.error("❌ Hata: 'license-key-input' ID'li input bulunamadı!");
-        return;
-    }
-
-    const key = keyInput.value.trim();
-    const email = emailInput ? emailInput.value.trim() : "";
-
-    if (!key) {
-        alert("Lütfen anahtarınızı girin.");
+    if (!email || !key) {
+        alert("Lütfen hem e-posta adresinizi hem de lisans anahtarınızı girin!");
         return;
     }
 
     try {
-        const res = await fetch(`/api/verify-license?key=${key}&email=${email}`);
+        const res = await fetch(`/api/verify-license?key=${encodeURIComponent(key)}&email=${encodeURIComponent(email)}`);
         const data = await res.json();
 
         if (data.valid) {
             localStorage.setItem('license_key', key);
             localStorage.setItem('license_email', email);
-            
-            // Hata olsa bile activateLicense durmasın diye try-catch içine alıyoruz
-            try {
-                applyVipTheme();
-            } catch (e) {
-                console.error("Tema uygulanırken hata oluştu ama lisans geçerli:", e);
-            }
-            
-            alert("Tebrikler! Premium Turbo Mod aktif.");
+            applyVipTheme(); // Görsel efektleri tetikle
+            alert("✅ Tebrikler! Premium Turbo Mod aktif edildi.");
         } else {
-            alert(data.message || "Geçersiz anahtar.");
+            alert("❌ " + (data.message || "Lisans doğrulanamadı."));
         }
-    } catch (error) {
-        console.error("Bağlantı hatası:", error);
-        alert("Sunucuya ulaşılamıyor.");
+    } catch (e) {
+        alert("Sunucuyla bağlantı kurulamadı!");
     }
+}
+
+function applyVipTheme() {
+    const elements = {
+        badge: document.getElementById('vip-badge'),
+        inputArea: document.getElementById('license-input-area'),
+        showBtn: document.getElementById('btn-show-license')
+    };
+
+    // null kontrolü yaparak hata almayı engelliyoruz
+    if (elements.badge) elements.badge.classList.remove('hidden');
+    if (elements.inputArea) elements.inputArea.classList.add('hidden');
+    if (elements.showBtn) elements.showBtn.classList.add('hidden');
+    document.body.classList.add('premium-mode');
 }
 
 // 3. Sayfa Yüklendiğinde Otomatik Kontrol
