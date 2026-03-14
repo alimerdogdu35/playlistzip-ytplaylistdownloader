@@ -80,32 +80,34 @@ app.post('/callback/paytr', async (req, res) => {
     }
 
   if (status === 'success') {
-        // 1. Planı tutara göre belirleyelim (Kuruş cinsinden)
+        // OID içindeki e-postayı ayıralım
+        const parts = merchant_oid.split('---');
+        const real_oid = parts[0];
+        const user_email = parts[1] || "Bilinmiyor"; // E-posta burada!
+
         let plan = 'daily';
         let durationDays = 1;
-        
         if (total_amount === "14900") { plan = 'monthly'; durationDays = 30; }
-        else if (total_amount === "59900") { plan = 'lifetime'; durationDays = 365; } // 100 yıl
+        else if (total_amount === "59900") { plan = 'lifetime'; durationDays = 3650; }
 
-        // 2. Anahtarı üret ve bitiş tarihini hesapla
         const newKey = generateLicenseKey(plan);
         const expireDate = new Date();
         expireDate.setDate(expireDate.getDate() + durationDays);
 
-        // 3. Veritabanına kaydet
         const licenseDoc = {
             key: newKey,
-            oid: merchant_oid,
+            oid: real_oid, // Saf OID
+            full_oid: merchant_oid, // Takip için tam OID
             plan: plan,
             expireDate: expireDate,
             active: true,
-            email: req.body.email, // PayTR bazen gönderir, göndermezse boş kalır
+            email: user_email.toLowerCase().trim(), // ARTIK BOŞ KALMAYACAK!
             createdAt: new Date()
         };
 
         db.insert(licenseDoc, (err) => {
             if (err) console.error("DB Kayıt Hatası:", err);
-            else console.log(`✅ Yeni Lisans: ${newKey} | Sipariş: ${merchant_oid}`);
+            else console.log(`✅ Lisans Kaydedildi: ${user_email} için ${newKey}`);
         });
 
         return res.send('OK');
@@ -131,7 +133,7 @@ const merchant_id = process.env.PAYTR_MERCHANT_ID
 const merchant_key = process.env.PAYTR_MERCHANT_KEY
 const merchant_salt = process.env.PAYTR_MERCHANT_SALT
 
-const merchant_oid = "SZ" + Date.now()
+const merchant_oid = "SZ" + Date.now() + "---" + userEmail;
 
 // IP
 let user_ip =
@@ -269,29 +271,22 @@ function generateLicenseKey(planType) {
 }
 // Örnek çıktı: DAY-A1B2C3D4-E5F6
 app.get('/success', (req, res) => {
-    const email = req.query.email; // URL'den gelen maili yakala
+    const email = req.query.email ? req.query.email.toLowerCase().trim() : null;
 
-    if (!email) {
-        return res.redirect('/'); // Mail yoksa ana sayfaya at
-    }
+    if (!email) return res.redirect('/');
 
-    // Veritabanında bu maille eşleşen son aktif lisansı bul
+    // Email ile eşleşen en son AKTİF lisansı bul
     db.find({ email: email, active: true }).sort({ createdAt: -1 }).limit(1).exec((err, docs) => {
-        if (err || docs.length === 0) {
-            // Callback (PayTR bildirimi) henüz gelmemiş olabilir (saniyelik fark)
-            // Kullanıcıya "Bekleyin, lisans hazırlanıyor" diyen bir ara sayfa gösterelim
-            return res.render('success', { 
-                status: 'waiting', 
-                email: email 
+        if (docs && docs.length > 0) {
+            res.render('success', { 
+                status: 'success',
+                licenseKey: docs[0].key,
+                expireDate: docs[0].expireDate
             });
+        } else {
+            // Eğer hala bulunamadıysa (saniyelik gecikme) bekleme moduna devam
+            res.render('success', { status: 'waiting', email: email });
         }
-
-        const license = docs[0];
-        res.render('success', { 
-            status: 'success',
-            licenseKey: license.key,
-            expireDate: license.expireDate
-        });
     });
 });
 app.get('/api/check-license', async (req, res) => {
