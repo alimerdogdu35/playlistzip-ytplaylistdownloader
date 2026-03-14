@@ -432,7 +432,7 @@ app.get('/api/download-playlist-zip', async (req, res) => {
         // --- 2. ZIP AYARLARI ---
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=PlaylistZip.zip`);
-        res.flushHeaders(); // İlk byte'ı hemen gönder
+        res.setHeader('Transfer-Encoding', 'chunked'); // Cloudflare için kritik
         const archive = archiver('zip', { zlib: { level: 5 } });
 
         // Artık dosya ismi dinamik: "Playlist_Ismi.zip"
@@ -460,11 +460,13 @@ app.get('/api/download-playlist-zip', async (req, res) => {
                         if (!error && fs.existsSync(tempFilePath)) {
                             archive.append(fs.createReadStream(tempFilePath), { name: `${video.title}.mp3` });
                             tempFiles.push(tempFilePath); // Silinmek üzere listeye ekle
+                            console.log(`✅ ${v.title} hazırlandı.`);
                         }
                         resolve(); 
                     });
                 });
             }));
+            res.write('');
         }
 
         await archive.finalize();
