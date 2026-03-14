@@ -1,0 +1,12 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+<div style="width: 100%; max-width: 900px; margin: 0 auto;">
+    <h2>Ödeme Güvenli Sayfası</h2>
+    <p>Lütfen ödemenizi aşağıdaki form üzerinden tamamlayınız.</p>
+    
+    <script src="https://www.paytr.com/js/iframeResizer.min.js"></script>
+    <iframe src="https://www.paytr.com/odeme/guvenli/{{ token }}" id="paytriframe" frameborder="0" scrolling="no" style="width: 100%;"></iframe>
+    <script>iFrameResize({},'#paytriframe');</script>
+    </div>
+{% endblock %}

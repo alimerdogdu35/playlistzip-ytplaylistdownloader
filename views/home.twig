@@ -6,13 +6,17 @@
     <title>PlaylistZip | En Hızlı YouTube Playlist MP3 İndirici (320kbps)</title>
     <meta name="description" content="Ücretsiz online YouTube Playlist Downloader. Tüm playlisti tek tıkla yüksek kaliteli MP3 (320kbps) olarak ZIP formatında indirin. Sınır yok, hız var!">
     <meta name="keywords" content="youtube playlist downloader, youtube mp3 converter, toplu mp3 indir, youtube albüm indir, high quality mp3 download, Playlistzip">
-    
+    <link rel="icon" type="image/x-icon" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/img/logo.png">
     <meta property="og:title" content="PlaylistZip - Hızlı YouTube Playlist Downloader">
     <meta property="og:description" content="Tüm playlisti saniyeler içinde MP3 paketine dönüştür.">
     <meta property="og:type" content="website">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    {% if not isVip %}
+        <script src="https://quge5.com/88/tag.min.js" data-zone="219105" async data-cfasync="false"></script>
+    {% endif %}
     <style>
         body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at top right, #1e293b, #0f172a); }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -62,7 +66,37 @@ section {
         YouTube playlistlerini <span class="text-white font-semibold">saniyeler içinde</span> yüksek kaliteli MP3 albümlerine dönüştürün. Beklemek yok, karmaşa yok.
     </p>
 </header>
+<!-- Premium Alanı -->
+<div id="premium-container" class="mt-8 mb-8 max-w-md mx-auto">
+    
+    <button id="btn-show-license" onclick="toggleLicenseInput()" 
+            class="w-full group flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-blue-600/10 to-blue-500/5 border border-blue-500/20 rounded-2xl hover:border-blue-500/50 transition-all duration-300">
+        <div class="bg-blue-500/20 p-2 rounded-lg text-blue-400 group-hover:scale-110 transition-transform">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+        </div>
+        <span class="text-sm font-bold tracking-wide text-blue-100 uppercase">Premium'u Etkinleştir</span>
+    </button>
 
+    <div id="license-input-area" class="hidden opacity-0 transform -translate-y-4 transition-all duration-500 mt-4">
+        <div class="glass p-2 rounded-2xl border-white/10 flex items-center gap-2">
+            <input type="text" id="license-key-input" placeholder="Anahtarınızı buraya yapıştırın..." 
+                   class="bg-transparent border-none outline-none text-sm w-full px-4 text-white placeholder:text-gray-600">
+            <button onclick="activateLicense()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl text-xs font-black transition-all">
+                ONAYLA
+            </button>
+        </div>
+        <p class="text-[10px] text-gray-500 mt-2 text-center">Anahtarınız yok mu? <a href="#pricing" class="text-blue-400 hover:underline">Hemen bir tane edinin.</a></p>
+    </div>
+
+    <div id="vip-badge" class="hidden items-center justify-center gap-3 p-4 bg-blue-600/10 rounded-2xl border border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.15)]">
+        <div class="flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-blue-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+        </div>
+        <span class="text-xs font-black tracking-[0.2em] text-blue-400 uppercase italic">Premium Turbo Mod Aktif</span>
+    </div>
+</div>
+<!--Playlist İndirme Alanı-->
         <div class="glass rounded-3xl p-8 shadow-2xl">
             <div class="relative group">
                 <input id="playlistUrl" type="text" 
@@ -165,7 +199,7 @@ section {
                     <li>✔ E-posta Desteği</li>
                 </ul>
             </div>
-            <button onclick="buyPlan('daily')" class="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all">Hemen Al</button>
+            <button onclick="openModal('daily')" class="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all">Hemen Al</button>
         </div>
 
         <div class="glass p-8 rounded-3xl border-blue-500/50 relative flex flex-col justify-between shadow-[0_0_40px_rgba(59,130,246,0.15)]">
@@ -180,7 +214,7 @@ section {
                     <li>✔ 30 Günlük Lisans Anahtarı</li>
                 </ul>
             </div>
-            <button onclick="buyPlan('monthly')" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all transform hover:scale-105">Pro'ya Geç 🚀</button>
+            <button onclick="openModal('monthly')" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all transform hover:scale-105">Pro'ya Geç 🚀</button>
         </div>
 
         <div class="glass p-8 rounded-3xl border-white/5 flex flex-col justify-between">
@@ -194,7 +228,7 @@ section {
                     <li>✔ 320kbps Ultra Kalite</li>
                 </ul>
             </div>
-            <button onclick="buyPlan('lifetime')" class="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all">Sonsuza Kadar Al</button>
+            <button onclick="openModal('lifetime')" class="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all">Sonsuza Kadar Al</button>
         </div>
     </div>
 </section>
@@ -318,6 +352,196 @@ section {
 </footer>
     </div>
 <script>
+let selectedPlan = ''; // Hangi planın seçildiğini burada tutacağız
+
+// 1. MODALI AÇAN FONKSİYON
+function openModal(planType) {
+    selectedPlan = planType; // Seçilen planı kaydet
+    const modal = document.getElementById('paymentModal');
+    modal.classList.remove('hidden'); // Modalı görünür yap
+    
+    // Animasyon için hafif bir gecikme
+    setTimeout(() => {
+        document.getElementById('modalContent').classList.remove('scale-95', 'opacity-0');
+        document.getElementById('modalContent').classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+// 2. ÖDEMEYİ BAŞLATAN (ESKİ buyPlan'IN YENİ HALİ)
+function processPayment(event) {
+    event.preventDefault(); // Sayfanın yenilenmesini engelle
+
+    const email = document.getElementById('customerEmail').value;
+    
+    // Senin eski validasyon mantığın
+    if (!email || !email.includes('@')) {
+        alert("Geçerli bir e-posta adresi girmelisiniz!");
+        return;
+    }
+
+    // Butonu yükleniyor moduna sokalım (Şıklık önemli)
+    const btn = document.getElementById('payButton');
+    btn.disabled = true;
+    btn.innerText = "Yönlendiriliyor...";
+
+    // SENİN FORM OLUŞTURMA MANTIĞIN (En garanti yöntem budur)
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/pay/create-checkout';
+
+    const planInput = document.createElement('input');
+    planInput.type = 'hidden';
+    planInput.name = 'planType';
+    planInput.value = selectedPlan;
+
+    const emailInput = document.createElement('input');
+    emailInput.type = 'hidden';
+    emailInput.name = 'email';
+    emailInput.value = email;
+
+    form.appendChild(planInput);
+    form.appendChild(emailInput);
+    document.body.appendChild(form);
+    
+    // Ve bombayı patlat:
+    form.submit();
+}
+
+// Modalı kapatma fonksiyonu
+function closeModal() {
+    document.getElementById('modalContent').classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        document.getElementById('paymentModal').classList.add('hidden');
+    }, 200);
+}
+
+// Ödemeyi Başlat
+async function handleCheckout(event) {
+    event.preventDefault(); // Sayfanın normal yenilenmesini durdur
+    
+    const email = document.getElementById('customerEmail').value;
+    const payButton = document.getElementById('payButton');
+
+    // 1. Basit Email Kontrolü
+    if (!email || !email.includes('@')) {
+        alert("Lütfen geçerli bir e-posta adresi giriniz!");
+        return;
+    }
+
+    // 2. Butonu Yükleniyor Moduna Sok (Tasarımın bozulmasın)
+    payButton.disabled = true;
+    payButton.innerHTML = `
+        <svg class="animate-spin h-5 w-5 text-white mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Ödeme Sayfasına Gidiliyor...</span>
+    `;
+
+    // 3. SENİN SAĞLAM FORM MANTIĞIN
+    // Fetch yerine direkt form oluşturup POST atıyoruz. 
+    // Bu sayede res.render('pay') komutu tarayıcıda temiz bir sayfa açar.
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/pay/create-checkout';
+
+    // Plan Tipi (Modal açıldığında global değişkene atamıştık)
+    const planInput = document.createElement('input');
+    planInput.type = 'hidden';
+    planInput.name = 'planType';
+    planInput.value = currentPlan; // openModal(plan) fonksiyonunda set edilen değişken
+
+    // Email
+    const emailInput = document.createElement('input');
+    emailInput.type = 'hidden';
+    emailInput.name = 'email';
+    emailInput.value = email;
+
+    form.appendChild(planInput);
+    form.appendChild(emailInput);
+    document.body.appendChild(form);
+    
+    // Ve dükkanı PayTR'ye yönlendiriyoruz
+    form.submit();
+}
+
+function toggleLicenseInput() {
+    const btn = document.getElementById('btn-show-license');
+    const inputArea = document.getElementById('license-input-area');
+
+    if (inputArea.classList.contains('hidden')) {
+        // Butonu gizle, girişi göster
+        btn.classList.add('hidden');
+        inputArea.classList.remove('hidden');
+        // Hafif bir gecikmeyle animasyonu başlat
+        setTimeout(() => {
+            inputArea.classList.remove('opacity-0', '-translate-y-4');
+        }, 10);
+    }
+}
+
+// activateLicense fonksiyonu içinde başarı durumuna şu eklemeyi yap:
+function applyVipTheme() {
+    // Tüm giriş alanlarını gizle
+    document.getElementById('btn-show-license').classList.add('hidden');
+    document.getElementById('license-input-area').classList.add('hidden');
+    document.getElementById('license-key-input').focus();
+    
+    // VIP Rozetini göster
+    const badge = document.getElementById('vip-badge');
+    badge.classList.remove('hidden');
+    badge.classList.add('flex');
+    
+    // Sayfa stilini güncelle
+    document.body.classList.add('premium-mode');
+}
+async function activateLicense() {
+    const key = document.getElementById('license-key-input').value.trim();
+    if (!key) return;
+
+    const res = await fetch(`/api/check-license?key=${key}`);
+    const data = await res.json();
+
+    if (data.isValid) {
+        // 1. Anahtarı tarayıcıya kaydet
+        localStorage.setItem('license_key', key);
+        
+        // 2. Görsel değişimi tetikle
+        applyVipTheme();
+        
+        alert("Tebrikler! Turbo indirme ve 320kbps kalitesi aktif edildi.");
+    } else {
+        alert("Geçersiz veya süresi dolmuş anahtar!");
+    }
+}
+
+function applyVipTheme() {
+    // Giriş alanını gizle, VIP rozetini göster
+    document.getElementById('license-input-wrapper').classList.add('hidden');
+    document.getElementById('vip-badge').classList.remove('hidden');
+    document.getElementById('vip-badge').classList.add('flex');
+
+    // Sitenin ana renklerini "Gold/Premium Blue" yap (Tailwind veya CSS değişkenleri ile)
+    document.documentElement.style.setProperty('--primary-color', '#3b82f6'); // Parlak Mavi
+    document.body.classList.add('premium-mode');
+    
+    // Opsiyonel: Arka plana hafif bir parıltı ekle
+    document.body.style.boxShadow = "inset 0 0 100px rgba(59, 130, 246, 0.1)";
+}
+
+// Sayfa yüklendiğinde anahtar var mı diye bak
+window.onload = () => {
+    if (localStorage.getItem('license_key')) {
+        applyVipTheme();
+    }
+};
+function startDownload() {
+    const playlistId = "ALINAN_PLAYLIST_ID";
+    const userKey = localStorage.getItem('license_key') || ''; // Varsa al, yoksa boş gönder
+    
+    // URL'ye hem ID'yi hem de KEY'i ekliyoruz
+    window.location.href = `/api/download-playlist-zip?id=${playlistId}&key=${userKey}`;
+}
     // Global değişken olarak tanımlayalım ki her yerden erişilebilsin
     async function processPlaylist() {
     console.log("Hazırla butonuna basıldı...");
@@ -384,7 +608,10 @@ section {
             statusTitle.innerText = "Sunucu paralel paketleme yapıyor, lütfen bekleyin...";
 
             // İndirmeyi başlat
-            window.location.href = `/api/download-playlist-zip?id=${playlistId}`;
+          
+            const currentKey = localStorage.getItem('license_key');
+            const downloadUrl = `/api/download-playlist-zip?id=${playlistId}&key=${currentKey}`;
+            window.location.href = downloadUrl;
 
             // Başarı ekranına geçiş (Playlist uzunsa süreyi artırıyoruz)
             const waitTime = data.videos.length > 50 ? 10000 : 5000;
@@ -412,5 +639,36 @@ section {
     }
 }
 </script>
+<div id="paymentModal" class="fixed inset-0 z-50 hidden flex items-center justify-center px-4">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModal()"></div>
+    
+    <div class="glass max-w-md w-full p-8 rounded-3xl border border-white/10 shadow-2xl relative z-10 scale-95 transition-transform duration-300" id="modalContent">
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-500/20 rounded-full text-blue-400 mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            </div>
+            <h3 class="text-2xl font-black uppercase tracking-tighter">Son Bir Adım</h3>
+            <p class="text-gray-400 text-sm mt-1">Lisans anahtarınızın gönderileceği e-posta adresini girin.</p>
+        </div>
+
+        <form id="checkoutForm" onsubmit="processPayment(event)" class="space-y-6">
+            <input type="hidden" id="selectedPlan" name="planType" value="">
+            
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">E-Posta Adresiniz</label>
+                <input type="email" id="customerEmail" required 
+                    class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all"
+                    placeholder="ornek@mail.com">
+            </div>
+
+            <button type="submit" id="payButton" class="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center space-x-2">
+                <span>Güvenli Ödemeye Geç</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+            </button>
+        </form>
+
+        <button onclick="closeModal()" class="mt-4 w-full text-gray-500 text-xs hover:text-gray-300 transition">Vazgeç</button>
+    </div>
+</div>
 </body>
 </html>

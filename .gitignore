@@ -1,13 +1,6 @@
-# Hassas Bilgiler
-.env
-
-# Bağımlılıklar
 node_modules/
-
-# Geçici İndirme Dosyaları
+.env
+database/
 downloads/
-*.zip
-*.mp3
-
-# Sistem Dosyaları
+*.log
 .DS_Store

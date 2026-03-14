@@ -8,6 +8,10 @@ const cors = require('cors');
 const fs = require('fs');
 const { exec } = require('child_process');
 const Datastore = require('nedb');
+const qs = require('qs');
+const axios = require('axios');
+const FormData = require('form-data');
+const crypto = require('crypto');
 const db = new Datastore({ filename: './database/licenses.db', autoload: true })
 
 
@@ -18,11 +22,12 @@ const downloadsDir = path.join(__dirname, 'downloads');
 if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir);
 // --- TWIG AYARLARI ---
 // 'public' klasörünü hem şablonların olduğu yer hem de statik yer olarak kullanıyoruz
-app.set('views', path.join(__dirname, 'public'));
+app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'twig');
 
 // --- MIDDLEWARES ---
 app.use(cors());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('public')); // CSS, Resim vb. dosyalar için
 
@@ -49,15 +54,260 @@ app.get('/', (req, res) => {
 const API_KEY = process.env.YOUTUBE_API_KEY; 
 const youtube = google.youtube('v3');
 
+
+app.post('/callback/paytr', async (req, res) => {
+    // PayTR'den gelen veriler
+    const { merchant_oid, status, total_amount, hash } = req.body;
+
+    // 1. GÜVENLİK: Gelen mesaj gerçekten PayTR'den mi geliyor? (Hash Kontrolü)
+    const paytr_key = process.env.PAYTR_MERCHANT_KEY;
+    const paytr_salt = process.env.PAYTR_MERCHANT_SALT;
+    const hash_string = merchant_oid + paytr_salt + status + total_amount;
+
+    const expected_hash = crypto
+    .createHmac('sha256', paytr_key)
+    .update(hash_string)
+    .digest('base64');
+
+    if (hash !== expected_hash) {
+        console.error("!!! GÜVENLİK UYARISI: Sahte PayTR Bildirimi!");
+        return res.send("HASH HATASI");
+    }
+
+  if (status === 'success') {
+        // 1. Planı tutara göre belirleyelim (Kuruş cinsinden)
+        let plan = 'daily';
+        let durationDays = 1;
+        
+        if (total_amount === "14900") { plan = 'monthly'; durationDays = 30; }
+        else if (total_amount === "59900") { plan = 'lifetime'; durationDays = 36500; } // 100 yıl
+
+        // 2. Anahtarı üret ve bitiş tarihini hesapla
+        const newKey = generateLicenseKey(plan);
+        const expireDate = new Date();
+        expireDate.setDate(expireDate.getDate() + durationDays);
+
+        // 3. Veritabanına kaydet
+        const licenseDoc = {
+            key: newKey,
+            oid: merchant_oid,
+            plan: plan,
+            expireDate: expireDate,
+            active: true,
+            email: req.body.email, // PayTR bazen gönderir, göndermezse boş kalır
+            createdAt: new Date()
+        };
+
+        db.insert(licenseDoc, (err) => {
+            if (err) console.error("DB Kayıt Hatası:", err);
+            else console.log(`✅ Yeni Lisans: ${newKey} | Sipariş: ${merchant_oid}`);
+        });
+
+        return res.send('OK');
+    }
+    res.send('OK');
+});
+app.post('/pay/create-checkout', async (req, res) => {
+try {
+
+let { email, planType } = req.body
+email = (email || "test@test.com").trim().toLowerCase()
+
+const prices = {
+daily: 4900,
+monthly: 14900,
+lifetime: 59900
+}
+
+const amount = (prices[planType] || 4900).toString()
+
+// PAYTR BİLGİLERİ
+const merchant_id = process.env.PAYTR_MERCHANT_ID
+const merchant_key = process.env.PAYTR_MERCHANT_KEY
+const merchant_salt = process.env.PAYTR_MERCHANT_SALT
+
+const merchant_oid = "SZ" + Date.now()
+
+// IP
+let user_ip =
+req.headers["x-forwarded-for"] ||
+req.socket.remoteAddress ||
+req.ip ||
+""
+
+if (user_ip.includes(",")) user_ip = user_ip.split(",")[0]
+
+if (user_ip === "::1" || user_ip === "127.0.0.1") {
+user_ip = "46.1.28.200"
+}
+
+// SEPET
+const basket_price = (amount / 100).toFixed(2)
+
+const user_basket = Buffer.from(
+JSON.stringify([["Premium", basket_price, "1"]])
+).toString("base64")
+
+const no_shipping = "1"
+const currency = "TL"
+const test_mode = "1"
+const no_installment = "1"
+const max_installment = "0"
+
+// HASH
+const hash_payload =
+merchant_id +
+user_ip +
+merchant_oid +
+email +
+amount +
+user_basket +
+no_installment +
+max_installment +
+currency +
+test_mode
+
+console.log("FORM DATA:", {
+merchant_id,
+user_ip,
+merchant_oid,
+email,
+payment_amount: amount,
+user_basket,
+currency,
+test_mode
+})
+
+console.log("HASH PAYLOAD:", hash_payload)
+
+const paytr_token = crypto
+.createHmac("sha256", merchant_key)
+.update(hash_payload + merchant_salt)
+.digest("base64")
+
+console.log("PAYTR TOKEN:", paytr_token)
+
+// FORM DATA
+const form = new FormData()
+
+form.append("merchant_id", merchant_id)
+form.append("user_ip", user_ip)
+form.append("merchant_oid", merchant_oid)
+form.append("email", email)
+form.append("payment_amount", amount)
+form.append("paytr_token", paytr_token)
+form.append("user_basket", user_basket)
+form.append("debug_on", "1")
+form.append("no_shipping", no_shipping)
+form.append("coupon_code", "")
+form.append("no_installment", no_installment)
+form.append("max_installment", max_installment)
+form.append("wait_page_load", "1")
+form.append("timeout_limit", "30")
+form.append("currency", currency)
+form.append("test_mode", test_mode)
+form.append("merchant_ok_url", "https://playlistzipmp3.com/success")
+form.append("merchant_fail_url", "https://playlistzipmp3.com/fail")
+form.append("user_name", "Musteri")
+form.append("user_address", "Turkiye")
+form.append("user_phone", "05555555555")
+form.append("lang", "tr")
+
+// PAYTR REQUEST
+let response
+
+try {
+
+response = await axios.post(
+"https://www.paytr.com/odeme/api/get-token",
+form,
+{ headers: form.getHeaders() }
+)
+
+console.log("PAYTR RESPONSE:", response.data)
+
+} catch (err) {
+
+console.log("AXIOS ERROR:", err.response?.data || err.message)
+return res.status(500).send("PayTR bağlantı hatası")
+
+}
+
+// RESPONSE KONTROL
+if (response.data.status === "success") {
+
+return res.render("pay", {
+token: response.data.token
+})
+
+} else {
+
+console.log("HATA SEBEBİ:", response.data.reason)
+return res.status(500).send(`Hata: ${response.data.reason}`)
+
+}
+
+} catch (error) {
+
+console.error("Sistem Hatası:", error.message)
+return res.status(500).send("İşlem başarısız.")
+
+}
+})
+function generateLicenseKey(planType) {
+    // Plan türüne göre belki bir harf ekleriz: D (Daily), M (Monthly), L (Lifetime)
+    const prefix = "SZ-" + planType.charAt(0).toUpperCase() + "-";
+    const randomPart = crypto.randomBytes(4).toString('hex').toUpperCase(); // Örn: 1A2B3C4D
+    return prefix + randomPart;
+}
+// Örnek çıktı: DAY-A1B2C3D4-E5F6
+app.get('/success', (req, res) => {
+    // PayTR başarı durumunda merchant_oid'yi GET parametresi olarak gönderir
+    const oid = req.query.merchant_oid;
+
+    if (!oid) return res.redirect('/'); // OID yoksa ana sayfaya at
+
+    // Lisansı veritabanında arayalım
+    db.findOne({ oid: oid }, (err, doc) => {
+        if (err || !doc) {
+            // Lisans henüz callback ile yazılmamış olabilir, 
+            // kullanıcıya bir bekleme ekranı gösterelim
+            return res.render('success', { 
+                licenseKey: "Lisansınız oluşturuluyor, lütfen 5 saniye sonra sayfayı yenileyin..." 
+            });
+        }
+        res.render('success', { licenseKey: doc.key });
+    });
+});
+app.get('/api/check-license', async (req, res) => {
+    const key = req.query.key;
+    const license = await db.findOne({ key: key });
+    
+    if (license && new Date() < new Date(license.expireDate)) {
+        res.json({ isValid: true, plan: license.plan });
+    } else {
+        res.json({ isValid: false });
+    }
+});
 app.get('/api/get-playlist-info', async (req, res) => {
     const { id } = req.query;
     if (!id) return res.status(400).send('ID gerekli.');
 
     try {
+        // --- 1. ÖNCE PLAYLIST BAŞLIĞINI ALALIM (Döngü Dışında) ---
+        const playlistMeta = await youtube.playlists.list({
+            key: process.env.YOUTUBE_API_KEY,
+            part: 'snippet',
+            id: id
+        });
+
+        const rawTitle = playlistMeta.data.items[0]?.snippet.title || "Bilinmeyen Liste";
+        const sanitizedTitle = rawTitle.replace(/[\\/*?:"<>|]/g, "_");
+
+        // --- 2. VİDEOLARI TOPLAYALIM ---
         let allVideos = [];
         let nextPageToken = '';
 
-        // Tüm sayfaları dolaşarak videoları topla
         do {
             const ytRes = await youtube.playlistItems.list({
                 key: process.env.YOUTUBE_API_KEY,
@@ -77,7 +327,12 @@ app.get('/api/get-playlist-info', async (req, res) => {
             nextPageToken = ytRes.data.nextPageToken;
         } while (nextPageToken);
 
-        res.json({ videos: allVideos });
+        // --- 3. HEM BAŞLIĞI HEM VİDEOLARI DÖNDÜRELİM ---
+        res.json({ 
+            playlistTitle: sanitizedTitle, 
+            videos: allVideos 
+        });
+
     } catch (error) {
         console.error("Liste hatası:", error);
         res.status(500).json({ error: 'Liste alınamadı.' });
@@ -86,13 +341,43 @@ app.get('/api/get-playlist-info', async (req, res) => {
 // Playlist İndirme Endpoint'i
 app.get('/api/download-playlist-zip', async (req, res) => {
     const playlistId = req.query.id;
+    const licenseKey = req.query.key;
+
     if (!playlistId) return res.status(400).send('Playlist ID gerekli.');
 
     try {
+        const playlistMeta = await youtube.playlists.list({
+            key: process.env.YOUTUBE_API_KEY,
+            part: 'snippet',
+            id: playlistId
+        });
+
+        const rawTitle = playlistMeta.data.items[0]?.snippet.title || "Playlist";
+        const sanitizedTitle = rawTitle.replace(/[\\/*?:"<>|]/g, "_");
+        // --- 0. LİSANS KONTROLÜ (Callback'ten Promise'e Dönüştürüldü) ---
+        let isValidLicense = false;
+        let audioQuality = '5'; // Standart: ~128kbps
+        let concurrentLimit = 1; // Standart: Tek tek
+
+        if (licenseKey) {
+            // NeDB findOne işlemini await ile bekleyebilmek için:
+            const license = await new Promise((resolve) => {
+                db.findOne({ key: licenseKey, active: true }, (err, doc) => resolve(doc));
+            });
+
+            const now = new Date();
+            if (license && now < new Date(license.expireDate)) {
+                isValidLicense = true;
+                audioQuality = '0'; // VIP: 320kbps (En yüksek)
+                concurrentLimit = 5; // VIP: Aynı anda 5 indirme (Turbo Hız)
+            }
+        }
+
+        console.log(`>>> İstek Alındı: ${isValidLicense ? '🚀 VIP (Turbo)' : '🐌 Standart'}`);
+
+        // --- 1. TÜM VİDEOLARI LİSTELE ---
         let allVideos = [];
         let nextPageToken = '';
-
-        // --- 1. TÜM VİDEOLARI LİSTELE (PAGINATION) ---
         do {
             const ytRes = await youtube.playlistItems.list({
                 key: process.env.YOUTUBE_API_KEY,
@@ -111,54 +396,51 @@ app.get('/api/download-playlist-zip', async (req, res) => {
             nextPageToken = ytRes.data.nextPageToken;
         } while (nextPageToken);
 
-        console.log(`>>> Toplam ${allVideos.length} video için paralel indirme başlıyor...`);
-
         // --- 2. ZIP AYARLARI ---
         const archive = archiver('zip', { zlib: { level: 5 } });
-        res.attachment(`StreamZip_Batch.zip`);
+
+        // Artık dosya ismi dinamik: "Playlist_Ismi.zip"
+        res.attachment(`${sanitizedTitle}.zip`);
+
         archive.pipe(res);
 
-        // --- 3. PARALEL İNDİRME VE PAKETLEME (CHUNK MANTIĞI) ---
-        const concurrentLimit = (isValidLicense) ? 5 : 1;// Aynı anda inecek video sayısı
-        
+        // Geçici dosyaları takip etmek için bir dizi
+        const tempFiles = [];
+
+        // --- 3. PARALEL İNDİRME (VIP HIZI BURADA DEVREYE GİRİYOR) ---
         for (let i = 0; i < allVideos.length; i += concurrentLimit) {
             const chunk = allVideos.slice(i, i + concurrentLimit);
             
-            console.log(`>>> Grup işleniyor: ${i + 1} - ${Math.min(i + concurrentLimit, allVideos.length)}`);
-
-            // Bu gruptaki videoları aynı anda başlatıyoruz
             await Promise.all(chunk.map(async (video) => {
-                const tempFile = path.join(downloadsDir, `${video.id}.mp3`);
+                const tempFileName = `${video.id}_${Date.now()}.mp3`;
+                const tempFilePath = path.join(downloadsDir, tempFileName);
                 const videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
-                const downloadCommand = `yt-dlp -x --audio-format mp3 --audio-quality 0 -o "${tempFile}" "${videoUrl}"`;
+                
+                // VIP ise 320kbps, Standart ise 128kbps indirir
+                const downloadCommand = `yt-dlp -x --audio-format mp3 --audio-quality ${audioQuality} -o "${tempFilePath}" "${videoUrl}"`;
 
                 return new Promise((resolve) => {
-                    exec(downloadCommand, (error, stdout, stderr) => {
-                        if (!error && fs.existsSync(tempFile)) {
-                            // Dosya tam indiğinde ZIP'e ekliyoruz
-                            archive.append(fs.createReadStream(tempFile), { name: `${video.title}.mp3` });
-                            console.log(`Eklendi: ${video.title}`);
-                        } else {
-                            console.error(`Hata: ${video.title}`, stderr);
+                    exec(downloadCommand, (error) => {
+                        if (!error && fs.existsSync(tempFilePath)) {
+                            archive.append(fs.createReadStream(tempFilePath), { name: `${video.title}.mp3` });
+                            tempFiles.push(tempFilePath); // Silinmek üzere listeye ekle
                         }
-                        resolve(); // Hata olsa da grubun kalanı için resolve et
+                        resolve(); 
                     });
                 });
             }));
         }
 
-        // --- 4. BİTİRİŞ VE TEMİZLİK ---
-        console.log(">>> Tüm gruplar bitti. ZIP sonlandırılıyor...");
-        archive.finalize();
+        await archive.finalize();
 
+        // --- 4. TEMİZLİK (İndirme bittikten sonra geçici dosyaları siler) ---
         res.on('finish', () => {
-            allVideos.forEach(v => {
-                const p = path.join(downloadsDir, `${v.id}.mp3`);
-                if (fs.existsSync(p)) {
-                    try { fs.unlinkSync(p); } catch(e) {}
+            console.log(">>> ZIP Gönderildi. Temizlik yapılıyor...");
+            tempFiles.forEach(file => {
+                if (fs.existsSync(file)) {
+                    fs.unlink(file, (err) => { if (err) console.error("Silme hatası:", err); });
                 }
             });
-            console.log(">>> Geçici dosyalar temizlendi.");
         });
 
     } catch (error) {

@@ -1,0 +1,38 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+<div class="min-h-[80vh] flex items-center justify-center px-4">
+    <div class="glass p-12 rounded-3xl border-blue-500/30 text-center max-w-lg w-full relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent pointer-events-none"></div>
+        
+        <div class="mb-6 inline-flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full text-green-400">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+
+        <h1 class="text-3xl font-black mb-2 uppercase tracking-tighter">Ödeme Başarılı!</h1>
+        <p class="text-gray-400 mb-8">Lisans anahtarınız oluşturuldu ve kullanıma hazır.</p>
+
+        <div class="bg-black/40 border border-white/5 p-6 rounded-2xl mb-8 group relative cursor-pointer hover:border-blue-500/50 transition-all" onclick="copyKey()">
+            <span class="text-xs text-gray-500 uppercase block mb-1">Lisans Anahtarınız</span>
+            <div id="licenseKey" class="text-2xl font-mono text-blue-400 font-bold tracking-widest">{{ licenseKey }}</div>
+            <div class="text-[10px] text-gray-600 mt-2 italic">Kopyalamak için tıklayın</div>
+        </div>
+
+        <a href="/" class="block w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-lg shadow-blue-600/20">
+            Hemen Kullanmaya Başla
+        </a>
+    </div>
+</div>
+
+<script>
+function copyKey() {
+    const key = document.getElementById('licenseKey').innerText;
+    navigator.clipboard.writeText(key).then(() => {
+        // Basit bir alert yerine daha şık bir geri bildirim de yapılabilir
+        alert('Anahtar kopyalandı! Ana sayfadaki alana yapıştırabilirsiniz.');
+    });
+}
+</script>
+{% endblock %}
