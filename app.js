@@ -425,7 +425,10 @@ app.get('/api/download-playlist-zip', async (req, res) => {
             allVideos = [...allVideos, ...fetchedVideos];
             nextPageToken = ytRes.data.nextPageToken;
         } while (nextPageToken);
-
+         
+        if (allVideos.length > 50 && !isValidLicense) {
+            return res.status(403).send('ERROR_LIMIT: 50 videodan fazla playlistler için Premium Lisans gereklidir.');
+        }
         // --- 2. ZIP AYARLARI ---
         const archive = archiver('zip', { zlib: { level: 5 } });
 
