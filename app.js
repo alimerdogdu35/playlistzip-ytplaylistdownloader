@@ -1,9 +1,11 @@
+const path = require('path');
+process.env.NODE_PATH = path.join(__dirname, 'node_modules');
+require('module').Module._initPaths();
 require('dotenv').config();
 const express = require('express');
 const { google } = require('googleapis');
 const youtubeDl = require('yt-dlp-exec');
 const archiver = require('archiver');
-const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
 const { exec } = require('child_process');
