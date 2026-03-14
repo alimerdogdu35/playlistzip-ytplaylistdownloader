@@ -446,33 +446,40 @@ app.get('/api/download-playlist-zip', async (req, res) => {
 
         // 3. PARALEL İNDİRME MOTORU
         for (let i = 0; i < allVideos.length; i += concurrentLimit) {
-            const chunk = allVideos.slice(i, i + concurrentLimit);
-            
-            await Promise.all(chunk.map(async (video) => {
-                const tempFileName = `${video.id}_${Date.now()}.mp3`;
-                const tempFilePath = path.join(downloadsDir, tempFileName);
-                const videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
-                
-                const downloadCommand = `yt-dlp -x --audio-format mp3 --audio-quality ${audioQuality} -o "${tempFilePath}" "${videoUrl}"`;
+    const chunk = allVideos.slice(i, i + concurrentLimit);
+    
+    // Chunk içindeki videoları paralel ama daha kontrollü işliyoruz
+    await Promise.all(chunk.map(async (video) => {
+        const tempFileName = `${video.id}_${Date.now()}.mp3`;
+        const tempFilePath = path.join(downloadsDir, tempFileName);
+        const videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
+        
+        // Komutu biraz daha "insancıl" hale getirdik
+        const downloadCommand = `yt-dlp --js-runtimes node --no-check-certificate --no-cache-dir -x --audio-format mp3 --audio-quality ${audioQuality} -o "${tempFilePath}" "${videoUrl}"`;
 
-                return new Promise((resolve) => {
-                    exec(downloadCommand, (error) => {
-                        if (!error && fs.existsSync(tempFilePath)) {
-                            // HATA DÜZELTİLDİ: 'v.title' yerine 'video.title' kullanıldı
-                            archive.append(fs.createReadStream(tempFilePath), { name: `${video.title}.mp3` });
-                            tempFiles.push(tempFilePath);
-                            console.log(`✅ ${video.title} paketlendi.`);
-                        } else {
-                            console.error(`❌ Hata: ${video.title} indirilemedi.`);
-                        }
-                        resolve(); 
-                    });
-                });
-            }));
+        return new Promise((resolve) => {
+            // maxBuffer'ı 10MB yaptık ki loglar taşmasın
+            exec(downloadCommand, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+                if (error) {
+                    // İŞTE KRİTİK NOKTA: Hatanın nedenini burada göreceğiz
+                    console.error(`❌ HATA (${video.title}):`, stderr || error.message);
+                } else {
+                    if (fs.existsSync(tempFilePath)) {
+                        archive.append(fs.createReadStream(tempFilePath), { name: `${video.title}.mp3` });
+                        tempFiles.push(tempFilePath);
+                        console.log(`✅ Hazır: ${video.title}`);
+                    } else {
+                        console.error(`❌ Dosya Oluşmadı: ${video.title}`);
+                    }
+                }
+                resolve(); // Hata olsa bile bir sonraki videoya geçmesi için resolve diyoruz
+            });
+        });
+    }));
 
-            // Her gruptan sonra boş bir "heartbeat" göndererek bağlantıyı canlı tut
-            res.write(''); 
-        }
+    // Cloudflare/Nginx için bağlantıyı sıcak tut
+    res.write(''); 
+}
 
         await archive.finalize();
 
