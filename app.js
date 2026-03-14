@@ -399,7 +399,7 @@ app.get('/api/download-playlist-zip', async (req, res) => {
             if (license && now < new Date(license.expireDate)) {
                 isValidLicense = true;
                 audioQuality = '0'; // VIP: 320kbps (En yüksek)
-                concurrentLimit = 5; // VIP: Aynı anda 5 indirme (Turbo Hız)
+                concurrentLimit = 3; // VIP: Aynı anda 5 indirme (Turbo Hız)
             }
         }
 
@@ -430,6 +430,9 @@ app.get('/api/download-playlist-zip', async (req, res) => {
             return res.status(403).send('ERROR_LIMIT: 50 videodan fazla playlistler için Premium Lisans gereklidir.');
         }
         // --- 2. ZIP AYARLARI ---
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename=PlaylistZip.zip`);
+        res.flushHeaders(); // İlk byte'ı hemen gönder
         const archive = archiver('zip', { zlib: { level: 5 } });
 
         // Artık dosya ismi dinamik: "Playlist_Ismi.zip"
