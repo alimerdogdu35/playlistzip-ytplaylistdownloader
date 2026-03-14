@@ -186,6 +186,8 @@ const paytr_token = crypto
 .digest("base64")
 
 console.log("PAYTR TOKEN:", paytr_token)
+const userEmail = req.body.email; // Kullanıcının girdiği email
+const merchant_ok_url = `https://playlistzipmp3.com/success?email=${userEmail}`;
 
 // FORM DATA
 const form = new FormData()
@@ -206,7 +208,7 @@ form.append("wait_page_load", "1")
 form.append("timeout_limit", "30")
 form.append("currency", currency)
 form.append("test_mode", test_mode)
-form.append("merchant_ok_url", "https://playlistzipmp3.com/success")
+form.append("merchant_ok_url", merchant_ok_url);
 form.append("merchant_fail_url", "https://playlistzipmp3.com/fail")
 form.append("user_name", "Musteri")
 form.append("user_address", "Turkiye")
@@ -262,21 +264,29 @@ function generateLicenseKey(planType) {
 }
 // Örnek çıktı: DAY-A1B2C3D4-E5F6
 app.get('/success', (req, res) => {
-    // PayTR başarı durumunda merchant_oid'yi GET parametresi olarak gönderir
-    const oid = req.query.merchant_oid;
+    const email = req.query.email; // URL'den gelen maili yakala
 
-    if (!oid) return res.redirect('/'); // OID yoksa ana sayfaya at
+    if (!email) {
+        return res.redirect('/'); // Mail yoksa ana sayfaya at
+    }
 
-    // Lisansı veritabanında arayalım
-    db.findOne({ oid: oid }, (err, doc) => {
-        if (err || !doc) {
-            // Lisans henüz callback ile yazılmamış olabilir, 
-            // kullanıcıya bir bekleme ekranı gösterelim
+    // Veritabanında bu maille eşleşen son aktif lisansı bul
+    db.find({ email: email, active: true }).sort({ createdAt: -1 }).limit(1).exec((err, docs) => {
+        if (err || docs.length === 0) {
+            // Callback (PayTR bildirimi) henüz gelmemiş olabilir (saniyelik fark)
+            // Kullanıcıya "Bekleyin, lisans hazırlanıyor" diyen bir ara sayfa gösterelim
             return res.render('success', { 
-                licenseKey: "Lisansınız oluşturuluyor, lütfen 5 saniye sonra sayfayı yenileyin..." 
+                status: 'waiting', 
+                email: email 
             });
         }
-        res.render('success', { licenseKey: doc.key });
+
+        const license = docs[0];
+        res.render('success', { 
+            status: 'completed',
+            licenseKey: license.key,
+            expireDate: license.expireDate
+        });
     });
 });
 app.get('/api/check-license', async (req, res) => {
