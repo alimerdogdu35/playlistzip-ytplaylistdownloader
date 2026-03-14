@@ -18,6 +18,10 @@ const db = new Datastore({
     filename: path.join(__dirname, 'database', 'licenses.db'), 
     autoload: true 
 });
+const ordersDb = new Datastore({ 
+    filename: path.join(__dirname, 'database', 'orders.db'), 
+    autoload: true 
+});
 
 
 
@@ -80,34 +84,37 @@ app.post('/callback/paytr', async (req, res) => {
     }
 
   if (status === 'success') {
-        // OID içindeki e-postayı ayıralım
-        const parts = merchant_oid.split('---');
-        const real_oid = parts[0];
-        const user_email = parts[1] || "Bilinmiyor"; // E-posta burada!
+        // Emanetçiden (ordersDb) e-postayı çekiyoruz
+        ordersDb.findOne({ oid: merchant_oid }, (err, order) => {
+            if (err || !order) {
+                console.error("HATA: Sipariş bulunamadı!", merchant_oid);
+                return res.send("OK");
+            }
 
-        let plan = 'daily';
-        let durationDays = 1;
-        if (total_amount === "14900") { plan = 'monthly'; durationDays = 30; }
-        else if (total_amount === "59900") { plan = 'lifetime'; durationDays = 3650; }
+            const user_email = order.email;
+            
+            // Artık lisansı bu e-posta üzerine kaydedebiliriz
+            const newKey = generateLicenseKey(order.plan);
+            const expireDate = new Date();
+            expireDate.setDate(expireDate.getDate() + (order.plan === 'monthly' ? 30 : 1));
 
-        const newKey = generateLicenseKey(plan);
-        const expireDate = new Date();
-        expireDate.setDate(expireDate.getDate() + durationDays);
+            const licenseDoc = {
+                key: newKey,
+                oid: merchant_oid,
+                email: user_email, // E-posta artık emanetçiden geldi!
+                plan: order.plan,
+                active: true,
+                expireDate: expireDate,
+                createdAt: new Date()
+            };
 
-        const licenseDoc = {
-            key: newKey,
-            oid: real_oid, // Saf OID
-            full_oid: merchant_oid, // Takip için tam OID
-            plan: plan,
-            expireDate: expireDate,
-            active: true,
-            email: user_email.toLowerCase().trim(), // ARTIK BOŞ KALMAYACAK!
-            createdAt: new Date()
-        };
-
-        db.insert(licenseDoc, (err) => {
-            if (err) console.error("DB Kayıt Hatası:", err);
-            else console.log(`✅ Lisans Kaydedildi: ${user_email} için ${newKey}`);
+            db.insert(licenseDoc, (err) => {
+                if (!err) {
+                    console.log(`✅ Lisans Teslim Edildi: ${user_email}`);
+                    // İsteğe bağlı: Siparişi tamamlandı olarak işaretle
+                    ordersDb.update({ oid: merchant_oid }, { $set: { status: 'completed' } });
+                }
+            });
         });
 
         return res.send('OK');
@@ -132,8 +139,17 @@ const amount = (prices[planType] || 4900).toString()
 const merchant_id = process.env.PAYTR_MERCHANT_ID
 const merchant_key = process.env.PAYTR_MERCHANT_KEY
 const merchant_salt = process.env.PAYTR_MERCHANT_SALT
-    
-const merchant_oid = "SZ" + Date.now() + "---" + email;
+
+const merchant_oid = "SZ" + Date.now();
+
+ordersDb.insert({ 
+    oid: merchant_oid, 
+    email: email, 
+    plan: planType, 
+    status: 'pending' 
+}, (err) => {
+    if (err) console.error("Sipariş Kayıt Hatası:", err);
+});
 
 // IP
 let user_ip =
@@ -193,8 +209,8 @@ const paytr_token = crypto
 .digest("base64")
 
 console.log("PAYTR TOKEN:", paytr_token)
-const userEmail = req.body.email; // Kullanıcının girdiği email
-const merchant_ok_url = `https://playlistzipmp3.com/success?email=${userEmail}`;
+
+const merchant_ok_url = `https://playlistzipmp3.com/success?email=${email}`;
 
 // FORM DATA
 const form = new FormData()
