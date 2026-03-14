@@ -609,7 +609,14 @@ function startDownload() {
           
             const currentKey = localStorage.getItem('license_key');
             const downloadUrl = `/api/download-playlist-zip?id=${playlistId}&key=${currentKey}`;
-            window.location.href = downloadUrl;
+            fetch(downloadUrl).then(response => {
+            if (response.status === 403) {
+                alert("🚨 SINIR AŞILDI: 50'den fazla video indirmek için lütfen Premium Lisans alın.");
+                window.location.hash = "#pricing"; // Fiyatlara yönlendir
+            } else {
+                window.location.href = downloadUrl; // 50 altıysa veya VIP ise indir
+            }
+        });
 
             // Başarı ekranına geçiş (Playlist uzunsa süreyi artırıyoruz)
             const waitTime = data.videos.length > 50 ? 10000 : 5000;
