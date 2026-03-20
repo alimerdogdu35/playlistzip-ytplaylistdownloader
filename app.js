@@ -454,27 +454,37 @@ app.get('/api/download-playlist-zip', async (req, res) => {
         const tempFilePath = path.join(downloadsDir, tempFileName);
         const videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
         
-        // Komutu biraz daha "insancıl" hale getirdik
-        const downloadCommand = `yt-dlp --js-runtimes node --no-check-certificate --no-cache-dir -x --audio-format mp3 --audio-quality ${audioQuality} -o "${tempFilePath}" "${videoUrl}"`;
+     const cookiePath = path.join(__dirname, 'cookies.txt');
 
-        return new Promise((resolve) => {
-            // maxBuffer'ı 10MB yaptık ki loglar taşmasın
-            exec(downloadCommand, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
-                if (error) {
-                    // İŞTE KRİTİK NOKTA: Hatanın nedenini burada göreceğiz
-                    console.error(`❌ HATA (${video.title}):`, stderr || error.message);
-                } else {
-                    if (fs.existsSync(tempFilePath)) {
-                        archive.append(fs.createReadStream(tempFilePath), { name: `${video.title}.mp3` });
-                        tempFiles.push(tempFilePath);
-                        console.log(`✅ Hazır: ${video.title}`);
-                    } else {
-                        console.error(`❌ Dosya Oluşmadı: ${video.title}`);
-                    }
-                }
-                resolve(); // Hata olsa bile bir sonraki videoya geçmesi için resolve diyoruz
-            });
-        });
+// 2. Terminalde çalışan mermi gibi komutu koda işleyelim
+const downloadCommand = `yt-dlp \
+    --cookies "${cookiePath}" \
+    --js-runtimes node \
+    --no-check-certificate \
+    --no-cache-dir \
+    -x --audio-format mp3 --audio-quality ${audioQuality} \
+    -o "${tempFilePath}" \
+    "https://www.youtube.com/watch?v=${video.id}"`;
+
+return new Promise((resolve) => {
+    // 3. Hafıza (Buffer) sınırını 10MB yapıyoruz ki loglar taşmasın
+    const options = { maxBuffer: 1024 * 1024 * 10 };
+
+    exec(downloadCommand, options, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`❌ YT-DLP Hatası (${video.title}):`, stderr || error.message);
+        } else {
+            if (fs.existsSync(tempFilePath)) {
+                archive.append(fs.createReadStream(tempFilePath), { name: `${video.title}.mp3` });
+                tempFiles.push(tempFilePath);
+                console.log(`✅ Paketlendi: ${video.title}`);
+            } else {
+                console.error(`❌ Dosya Oluşmadı: ${video.title}`);
+            }
+        }
+        resolve(); // Her durumda bir sonraki videoya geç
+    });
+});
     }));
 
     // Cloudflare/Nginx için bağlantıyı sıcak tut
